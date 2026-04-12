@@ -1,10 +1,14 @@
 import type { MessageRole } from "./conversation";
+import type { MessageSource } from "./source";
 
 export interface ChatMessage {
   id: string;
   role: MessageRole;
   content: string;
   createdAt: string;
+  sources?: MessageSource[];
+  sourcesLoading?: boolean;
+  sourcesError?: string;
 }
 
 export type ChatErrorCode =

@@ -25,11 +25,11 @@
 - [x] Gestion des erreurs chat (timeout, API down, quota dépassé, input trop long)
 
 ## Phase 3 — P0 Système de Sources Sefaria
-- [ ] Intégration Sefaria Linker API (POST /api/find-refs) pour extraction des citations
-- [ ] Récupération textes Sefaria (GET /api/v3/texts/{ref}) hébreu + traduction EN/FR
-- [ ] Composant bloc source (replié par défaut, déplié au clic, badge catégorie)
-- [ ] Lien "Voir sur Sefaria" dans chaque bloc source
-- [ ] Gestion erreur Sefaria (fallback : réponse sans sources + message)
+- [x] Intégration Sefaria Linker API (POST /api/find-refs) pour extraction des citations
+- [x] Récupération textes Sefaria (GET /api/v3/texts/{ref}) hébreu + traduction EN/FR
+- [x] Composant bloc source (replié par défaut, déplié au clic, badge catégorie)
+- [x] Lien "Voir sur Sefaria" dans chaque bloc source
+- [x] Gestion erreur Sefaria (fallback : réponse sans sources + message)
 
 ## Phase 4 — P0 Authentification
 - [ ] Inscription email + password (validation, email de confirmation)
