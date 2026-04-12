@@ -44,20 +44,14 @@ describe("useChat", () => {
   });
 
   it("ajoute un message utilisateur et assistant lors d'un envoi", async () => {
-    // Mock successful streaming response
-    const stream = new ReadableStream({
-      start(controller) {
-        controller.enqueue(new TextEncoder().encode('data: {"response":"Shalom"}\n\n'));
-        controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
-        controller.close();
-      },
-    });
-
     mockFetch.mockResolvedValueOnce(
-      new Response(stream, {
-        status: 200,
-        headers: { "Content-Type": "text/event-stream" },
-      })
+      new Response(
+        JSON.stringify({ response: "Shalom", sources: [] }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }
+      )
     );
 
     const { result } = renderHook(() => useChat());
@@ -111,15 +105,11 @@ describe("useChat", () => {
   });
 
   it("clearMessages vide tous les messages", async () => {
-    const stream = new ReadableStream({
-      start(controller) {
-        controller.enqueue(new TextEncoder().encode('data: {"response":"OK"}\n\n'));
-        controller.close();
-      },
-    });
-
     mockFetch.mockResolvedValueOnce(
-      new Response(stream, { status: 200 })
+      new Response(
+        JSON.stringify({ response: "OK", sources: [] }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
     );
 
     const { result } = renderHook(() => useChat());

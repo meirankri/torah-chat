@@ -3,6 +3,11 @@ import type { ChatMessage, ChatError } from "~/domain/entities/chat";
 import { MAX_INPUT_LENGTH } from "~/domain/entities/chat";
 import type { MessageSource } from "~/domain/entities/source";
 
+interface ChatApiResponse {
+  response: string;
+  sources: MessageSource[];
+}
+
 interface UseChatReturn {
   messages: ChatMessage[];
   isLoading: boolean;
@@ -14,31 +19,6 @@ interface UseChatReturn {
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-interface SourcesApiResponse {
-  sources: MessageSource[];
-  error?: string;
-}
-
-async function fetchSources(
-  text: string,
-  messageId: string
-): Promise<MessageSource[]> {
-  try {
-    const response = await fetch("/api/sources", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, messageId }),
-    });
-
-    if (!response.ok) return [];
-
-    const data = (await response.json()) as SourcesApiResponse;
-    return data.sources ?? [];
-  } catch {
-    return [];
-  }
 }
 
 export function useChat(): UseChatReturn {
@@ -65,7 +45,6 @@ export function useChat(): UseChatReturn {
     setError(null);
     setIsLoading(true);
 
-    // Add user message
     const userMessage: ChatMessage = {
       id: generateId(),
       role: "user",
@@ -79,11 +58,11 @@ export function useChat(): UseChatReturn {
       role: "assistant",
       content: "",
       createdAt: new Date().toISOString(),
+      sourcesLoading: true,
     };
 
     setMessages((prev) => [...prev, userMessage, assistantMessage]);
 
-    // Cancel any existing request
     abortControllerRef.current?.abort();
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
@@ -105,84 +84,32 @@ export function useChat(): UseChatReturn {
           code: errorData.code as ChatError["code"],
           message: errorData.message,
         });
-        // Remove the empty assistant message
         setMessages((prev) => prev.filter((m) => m.id !== assistantMessageId));
         setIsLoading(false);
         return;
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) {
-        setError({ code: "API_DOWN", message: "No response stream available." });
-        setMessages((prev) => prev.filter((m) => m.id !== assistantMessageId));
-        setIsLoading(false);
-        return;
-      }
+      const data = await response.json() as ChatApiResponse;
 
-      const decoder = new TextDecoder();
-      let fullContent = "";
+      const sources: MessageSource[] = (data.sources ?? []).map((s) => ({
+        ...s,
+        messageId: assistantMessageId,
+      }));
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        // Workers AI streaming format: "data: {json}\n\n" or raw text
-        const lines = chunk.split("\n");
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            if (data === "[DONE]") continue;
-            try {
-              const parsed = JSON.parse(data) as { response?: string };
-              if (parsed.response) {
-                fullContent += parsed.response;
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMessageId
+            ? {
+                ...m,
+                content: data.response,
+                sources: sources.length > 0 ? sources : undefined,
+                sourcesLoading: false,
               }
-            } catch {
-              // Not JSON, treat as raw text
-              fullContent += data;
-            }
-          } else if (line.trim() && !line.startsWith(":")) {
-            // Raw text chunk (some Workers AI models)
-            fullContent += line;
-          }
-        }
-
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMessageId ? { ...m, content: fullContent } : m
-          )
-        );
-      }
-
-      // Streaming done — fetch sources for the assistant response
-      if (fullContent.length > 0) {
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMessageId
-              ? { ...m, sourcesLoading: true }
-              : m
-          )
-        );
-
-        const sources = await fetchSources(fullContent, assistantMessageId);
-
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMessageId
-              ? {
-                  ...m,
-                  sources: sources.length > 0 ? sources : undefined,
-                  sourcesLoading: false,
-                }
-              : m
-          )
-        );
-      }
+            : m
+        )
+      );
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
-        // Request was cancelled, not an error
         return;
       }
       setError({

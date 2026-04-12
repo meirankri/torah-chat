@@ -31,6 +31,15 @@ export interface SefariaSourceResult {
   sefariaUrl: string;
 }
 
+interface SefariaSearchHit {
+  _score: number;
+  _source: {
+    ref: string;
+    heRef: string;
+    categories: string[];
+  };
+}
+
 function flattenText(text: string | string[]): string {
   if (Array.isArray(text)) {
     return text.flat(Infinity).join(" ");
@@ -176,5 +185,65 @@ export class SefariaClient {
       )
       .map((r) => r.value)
       .filter((r): r is SefariaSourceResult => r !== null);
+  }
+
+  /**
+   * Search Sefaria's full-text index by keywords, then fetch texts for top hits.
+   */
+  async searchByKeywords(
+    keywords: string[],
+    translationLang: string = "english",
+    maxSources: number = 5
+  ): Promise<SefariaSourceResult[]> {
+    const query = keywords.join(" ");
+    const searchUrl = `${this.baseUrl}/api/search/text/_search`;
+
+    try {
+      const response = await fetch(searchUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: {
+            multi_match: {
+              query,
+              fields: ["naive_lemmatizer", "exact"],
+              type: "best_fields",
+            },
+          },
+          size: maxSources,
+          _source: ["ref", "heRef", "categories"],
+        }),
+      });
+
+      if (!response.ok) {
+        console.error(`Sefaria search failed: ${response.status}`);
+        return [];
+      }
+
+      const data = (await response.json()) as {
+        hits?: { hits?: SefariaSearchHit[] };
+      };
+
+      const hits = data.hits?.hits ?? [];
+      if (hits.length === 0) return [];
+
+      // Deduplicate by ref
+      const uniqueRefs = [...new Set(hits.map((h) => h._source.ref))];
+
+      const results = await Promise.allSettled(
+        uniqueRefs.slice(0, maxSources).map((ref) => this.getText(ref, translationLang))
+      );
+
+      return results
+        .filter(
+          (r): r is PromiseFulfilledResult<SefariaSourceResult | null> =>
+            r.status === "fulfilled"
+        )
+        .map((r) => r.value)
+        .filter((r): r is SefariaSourceResult => r !== null);
+    } catch (error) {
+      console.error("Sefaria search error:", error);
+      return [];
+    }
   }
 }

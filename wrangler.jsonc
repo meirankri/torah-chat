@@ -16,17 +16,19 @@
     {
       "binding": "DB",
       "database_name": "torah-chat-db",
-      "database_id": "TODO_REPLACE_WITH_REAL_ID",
+      "database_id": "f20d4bad-63ce-4a94-8049-7a6086bb7589",
       "migrations_dir": "migrations"
     }
   ],
   "kv_namespaces": [
     {
       "binding": "CACHE",
-      "id": "TODO_REPLACE_WITH_REAL_ID"
+      "id": "482f24a4fb434b1cbbffcd1b40d3c04c"
     }
   ],
   "ai": {
     "binding": "AI"
-  }
+  },
+  // GEMINI_API_KEY is set as a secret via: npx wrangler secret put GEMINI_API_KEY
+  // For local dev, it's read from .dev.vars
 }
