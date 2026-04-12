@@ -1,5 +1,9 @@
-import ReactMarkdown from "react-markdown";
+import { Suspense, lazy } from "react";
 import type { ChatMessage as ChatMessageType } from "~/domain/entities/chat";
+
+const MarkdownRenderer = lazy(() =>
+  import("./MarkdownRenderer.client").then((m) => ({ default: m.MarkdownRenderer }))
+);
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -22,9 +26,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
         {isUser ? (
           <p className="whitespace-pre-wrap">{message.content}</p>
         ) : (
-          <div className="prose prose-sm dark:prose-invert max-w-none">
-            <ReactMarkdown>{message.content}</ReactMarkdown>
-          </div>
+          <Suspense fallback={<p className="whitespace-pre-wrap">{message.content}</p>}>
+            <MarkdownRenderer content={message.content} />
+          </Suspense>
         )}
       </div>
     </div>
