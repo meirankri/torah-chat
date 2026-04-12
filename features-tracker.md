@@ -16,13 +16,13 @@
 - [x] Fichier .env.example avec toutes les variables nécessaires
 
 ## Phase 2 — P0 Module Chat (interface)
-- [ ] Interface chat : champ de saisie avec support multilingue
-- [ ] Affichage des messages (user + assistant) avec Markdown rendering
-- [ ] Streaming LLM via SSE (Workers AI)
+- [x] Interface chat : champ de saisie avec support multilingue
+- [x] Affichage des messages (user + assistant) avec Markdown rendering
+- [x] Streaming LLM via SSE (Workers AI)
 - [x] System prompt configurable (stocké dans un fichier, pas hard-codé)
-- [ ] Indication de frappe (typing animation) pendant la génération
-- [ ] Auto-scroll pendant le streaming (avec détection scroll utilisateur)
-- [ ] Gestion des erreurs chat (timeout, API down, quota dépassé, input trop long)
+- [x] Indication de frappe (typing animation) pendant la génération
+- [x] Auto-scroll pendant le streaming (avec détection scroll utilisateur)
+- [x] Gestion des erreurs chat (timeout, API down, quota dépassé, input trop long)
 
 ## Phase 3 — P0 Système de Sources Sefaria
 - [ ] Intégration Sefaria Linker API (POST /api/find-refs) pour extraction des citations

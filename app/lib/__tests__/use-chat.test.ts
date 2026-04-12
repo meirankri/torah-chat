@@ -1,0 +1,139 @@
+import { renderHook, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { useChat } from "../use-chat";
+import { MAX_INPUT_LENGTH } from "~/domain/entities/chat";
+
+// Mock fetch globally
+const mockFetch = vi.fn();
+vi.stubGlobal("fetch", mockFetch);
+
+describe("useChat", () => {
+  beforeEach(() => {
+    mockFetch.mockReset();
+  });
+
+  it("initialise avec un état vide", () => {
+    const { result } = renderHook(() => useChat());
+    expect(result.current.messages).toHaveLength(0);
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.error).toBeNull();
+  });
+
+  it("refuse un message trop long", async () => {
+    const { result } = renderHook(() => useChat());
+    const longMessage = "a".repeat(MAX_INPUT_LENGTH + 1);
+
+    await act(async () => {
+      await result.current.sendMessage(longMessage);
+    });
+
+    expect(result.current.error).not.toBeNull();
+    expect(result.current.error?.code).toBe("INPUT_TOO_LONG");
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("refuse un message vide", async () => {
+    const { result } = renderHook(() => useChat());
+
+    await act(async () => {
+      await result.current.sendMessage("   ");
+    });
+
+    expect(result.current.messages).toHaveLength(0);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("ajoute un message utilisateur et assistant lors d'un envoi", async () => {
+    // Mock successful streaming response
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('data: {"response":"Shalom"}\n\n'));
+        controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
+        controller.close();
+      },
+    });
+
+    mockFetch.mockResolvedValueOnce(
+      new Response(stream, {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      })
+    );
+
+    const { result } = renderHook(() => useChat());
+
+    await act(async () => {
+      await result.current.sendMessage("Bonjour");
+    });
+
+    expect(result.current.messages).toHaveLength(2);
+    expect(result.current.messages[0]?.role).toBe("user");
+    expect(result.current.messages[0]?.content).toBe("Bonjour");
+    expect(result.current.messages[1]?.role).toBe("assistant");
+    expect(result.current.messages[1]?.content).toBe("Shalom");
+  });
+
+  it("gère les erreurs API", async () => {
+    mockFetch.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ code: "API_DOWN", message: "Service unavailable" }),
+        { status: 503, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    const { result } = renderHook(() => useChat());
+
+    await act(async () => {
+      await result.current.sendMessage("Test");
+    });
+
+    expect(result.current.error).not.toBeNull();
+    expect(result.current.error?.code).toBe("API_DOWN");
+    // L'assistant message vide devrait être retiré
+    expect(result.current.messages).toHaveLength(1); // Seulement le message user
+  });
+
+  it("clearError efface l'erreur", async () => {
+    const { result } = renderHook(() => useChat());
+    const longMessage = "a".repeat(MAX_INPUT_LENGTH + 1);
+
+    await act(async () => {
+      await result.current.sendMessage(longMessage);
+    });
+
+    expect(result.current.error).not.toBeNull();
+
+    act(() => {
+      result.current.clearError();
+    });
+
+    expect(result.current.error).toBeNull();
+  });
+
+  it("clearMessages vide tous les messages", async () => {
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('data: {"response":"OK"}\n\n'));
+        controller.close();
+      },
+    });
+
+    mockFetch.mockResolvedValueOnce(
+      new Response(stream, { status: 200 })
+    );
+
+    const { result } = renderHook(() => useChat());
+
+    await act(async () => {
+      await result.current.sendMessage("Test");
+    });
+
+    expect(result.current.messages.length).toBeGreaterThan(0);
+
+    act(() => {
+      result.current.clearMessages();
+    });
+
+    expect(result.current.messages).toHaveLength(0);
+  });
+});
