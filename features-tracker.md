@@ -7,19 +7,19 @@
 
 ## Phase 1 — Setup projet
 - [x] Init projet React Router v7 (Remix) + TypeScript strict + Tailwind CSS (sur Cloudflare)
-- [ ] Setup Vitest + React Testing Library + miniflare (config + premiers tests smoke)
-- [ ] Config Wrangler + Cloudflare Workers (backend API)
-- [ ] Setup D1 schema (users, conversations, messages, sources)
-- [ ] Setup KV namespace (cache sources Sefaria)
-- [ ] Config ESLint + Prettier
-- [ ] Setup structure hexagonale (domain / application / infrastructure)
-- [ ] Fichier .env.example avec toutes les variables nécessaires
+- [x] Setup Vitest + React Testing Library + miniflare (config + premiers tests smoke)
+- [x] Config Wrangler + Cloudflare Workers (backend API)
+- [x] Setup D1 schema (users, conversations, messages, sources)
+- [x] Setup KV namespace (cache sources Sefaria)
+- [x] Config ESLint + Prettier
+- [x] Setup structure hexagonale (domain / application / infrastructure)
+- [x] Fichier .env.example avec toutes les variables nécessaires
 
 ## Phase 2 — P0 Module Chat (interface)
 - [ ] Interface chat : champ de saisie avec support multilingue
 - [ ] Affichage des messages (user + assistant) avec Markdown rendering
 - [ ] Streaming LLM via SSE (Workers AI)
-- [ ] System prompt configurable (stocké dans un fichier, pas hard-codé)
+- [x] System prompt configurable (stocké dans un fichier, pas hard-codé)
 - [ ] Indication de frappe (typing animation) pendant la génération
 - [ ] Auto-scroll pendant le streaming (avec détection scroll utilisateur)
 - [ ] Gestion des erreurs chat (timeout, API down, quota dépassé, input trop long)

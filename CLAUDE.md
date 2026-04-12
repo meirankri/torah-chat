@@ -30,6 +30,12 @@ Chaque feature implémentée DOIT être accompagnée de tests. Ne JAMAIS committ
 - **API / Workers** : Vitest + `miniflare` pour simuler l'environnement Cloudflare
 - **Mocks** : `vitest` built-in (vi.mock, vi.fn) — pas de librairie externe
 
+### Philosophie des tests — MVP first
+- **PAS de tests de wording / contenu textuel** (pas de `toHaveTextContent("Mon titre")`)
+- **PAS de tests UI cosmétiques** (pas de vérification de classes CSS, couleurs, layout)
+- **Uniquement des tests fonctionnels** : le composant se monte, les interactions marchent, la logique métier est correcte, les API répondent correctement
+- Objectif : valider que le code **fonctionne**, pas qu'il **affiche le bon texte**
+
 ### Types de tests à écrire
 
 **Tests unitaires** (dossier `__tests__/` à côté du fichier testé) :
@@ -44,7 +50,7 @@ Chaque feature implémentée DOIT être accompagnée de tests. Ne JAMAIS committ
 - Flow complet chat : envoi question → appel LLM → extraction sources → réponse
 - Flow auth : inscription → login → refresh token → accès protégé
 - Flow Stripe webhooks : événement → mise à jour DB
-- Composants React avec interactions (clic, saisie, affichage conditionnel)
+- Composants React avec interactions fonctionnelles (clic → action, saisie → soumission)
 
 ### Convention de nommage
 - Tests unitaires : `maFonction.test.ts` ou `MonComposant.test.tsx`
@@ -65,16 +71,16 @@ Chaque feature implémentée DOIT être accompagnée de tests. Ne JAMAIS committ
 
 ## Workflow automatisé (quand lancé par le cron)
 1. Lire `features-tracker.md` pour identifier l'avancement actuel
-2. Trouver la prochaine feature avec status `[ ]` (non faite)
-3. Implémenter cette feature complètement
-4. Écrire les tests unitaires pour le code ajouté
-5. Écrire les tests d'intégration si la feature touche une API ou un flow
-6. Lancer `npm run test` — vérifier que TOUS les tests passent (anciens + nouveaux)
+2. Regrouper les features restantes qui sont liées et les implémenter ensemble (ex: Wrangler + D1 + KV = un seul batch)
+3. Implémenter les features du batch complètement
+4. Écrire les tests fonctionnels pour le code ajouté (pas de tests de wording)
+5. Écrire les tests d'intégration si les features touchent une API ou un flow
+6. Lancer `npm run test` — vérifier que TOUS les tests passent
 7. Lancer `npm run build` — vérifier que le build passe
 8. Si les tests ou le build échouent : corriger avant de continuer
-9. Mettre à jour `features-tracker.md` en cochant `[x]` la feature terminée
+9. Mettre à jour `features-tracker.md` en cochant `[x]` les features terminées
 10. Committer avec un message descriptif au format : "feat: <description>"
-11. Ne faire QU'UNE seule feature par exécution
+11. Priorité MVP : aller vite, pas de sur-ingénierie
 
 ## Structure du projet attendue
 ```

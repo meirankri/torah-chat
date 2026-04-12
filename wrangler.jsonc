@@ -1,9 +1,32 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "react-router-app",
+  "name": "torah-chat",
   "compatibility_date": "2025-04-04",
   "main": "./workers/app.ts",
   "vars": {
-    "VALUE_FROM_CLOUDFLARE": "Hello from Cloudflare"
+    "APP_NAME": "Torah Chat",
+    "SEFARIA_BASE_URL": "https://www.sefaria.org",
+    "SEFARIA_CACHE_TTL_SECONDS": "86400",
+    "PLAN_FREE_TRIAL_DAYS": "7",
+    "PLAN_STANDARD_QUESTIONS_LIMIT": "500",
+    "WORKERS_AI_MODEL_FREE": "@cf/meta/llama-3.1-8b-instruct",
+    "WORKERS_AI_MODEL_STANDARD": "@cf/meta/llama-3.1-70b-instruct"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "torah-chat-db",
+      "database_id": "TODO_REPLACE_WITH_REAL_ID",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      "id": "TODO_REPLACE_WITH_REAL_ID"
+    }
+  ],
+  "ai": {
+    "binding": "AI"
   }
 }
