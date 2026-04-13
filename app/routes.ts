@@ -1,7 +1,22 @@
 import { type RouteConfig, index, route } from "@react-router/dev/routes";
 
 export default [
-  index("routes/chat.tsx"),
+  index("routes/home.tsx"),
+  route("chat", "routes/chat.tsx"),
+  route("login", "routes/login.tsx"),
+  route("signup", "routes/signup.tsx"),
+  route("forgot-password", "routes/forgot-password.tsx"),
+  route("reset-password", "routes/reset-password.tsx"),
+  route("profile", "routes/profile.tsx"),
   route("api/chat", "routes/api.chat.ts"),
   route("api/sources", "routes/api.sources.ts"),
+  route("api/auth/signup", "routes/api.auth.signup.ts"),
+  route("api/auth/login", "routes/api.auth.login.ts"),
+  route("api/auth/logout", "routes/api.auth.logout.ts"),
+  route("api/auth/refresh", "routes/api.auth.refresh.ts"),
+  route("api/auth/forgot-password", "routes/api.auth.forgot-password.ts"),
+  route("api/auth/reset-password", "routes/api.auth.reset-password.ts"),
+  route("api/auth/google", "routes/api.auth.google.ts"),
+  route("api/auth/google/callback", "routes/api.auth.google.callback.ts"),
+  route("api/profile", "routes/api.profile.ts"),
 ] satisfies RouteConfig;

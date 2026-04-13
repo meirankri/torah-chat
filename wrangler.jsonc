@@ -29,6 +29,7 @@
   "ai": {
     "binding": "AI"
   },
-  // GEMINI_API_KEY is set as a secret via: npx wrangler secret put GEMINI_API_KEY
-  // For local dev, it's read from .dev.vars
+  // Secrets set via: npx wrangler secret put <SECRET_NAME>
+  // For local dev, they're read from .dev.vars
+  // Required secrets: GEMINI_API_KEY, JWT_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 }

@@ -6,6 +6,7 @@ import { SefariaClient } from "~/infrastructure/sefaria/sefaria-client";
 import type { SefariaSourceResult } from "~/infrastructure/sefaria/sefaria-client";
 import { GeminiClient, chatHistoryToGemini } from "~/infrastructure/gemini/gemini-client";
 import { mapSefariaResultsToSources } from "~/application/services/source-service";
+import { requireAuth } from "~/lib/auth/middleware";
 
 const MAX_HISTORY_MESSAGES = 10;
 const MAX_SEFARIA_SOURCES = 5;
@@ -49,6 +50,16 @@ FORMAT DE RÉPONSE :
 export async function action({ request, context }: Route.ActionArgs) {
   if (request.method !== "POST") {
     return chatErrorResponse("UNKNOWN", "Method not allowed", 405);
+  }
+
+  // Protect API: require auth if JWT_SECRET is configured
+  const jwtSecret = (context.cloudflare.env as Record<string, string>).JWT_SECRET;
+  if (jwtSecret) {
+    try {
+      await requireAuth(request, jwtSecret);
+    } catch {
+      return chatErrorResponse("UNKNOWN", "Authentication required", 401);
+    }
   }
 
   let body: { content: string; history?: ChatMessage[] };

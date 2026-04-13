@@ -31,6 +31,9 @@ describe("User entity types", () => {
       failedLoginAttempts: 0,
       lockedUntil: null,
       emailVerified: false,
+      emailVerificationToken: null,
+      passwordResetToken: null,
+      passwordResetExpiresAt: null,
       createdAt: "2025-01-07T00:00:00Z",
       updatedAt: "2025-01-07T00:00:00Z",
     };

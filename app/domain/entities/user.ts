@@ -19,6 +19,9 @@ export interface User {
   failedLoginAttempts: number;
   lockedUntil: string | null;
   emailVerified: boolean;
+  emailVerificationToken: string | null;
+  passwordResetToken: string | null;
+  passwordResetExpiresAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

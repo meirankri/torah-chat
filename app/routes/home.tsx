@@ -1,4 +1,22 @@
 import type { Route } from "./+types/home";
+import { redirect } from "react-router";
+import { optionalAuth } from "~/lib/auth/middleware";
+
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const env = context.cloudflare.env;
+  const jwtSecret = (env as Record<string, string>).JWT_SECRET;
+
+  if (jwtSecret) {
+    const auth = await optionalAuth(request, jwtSecret);
+    if (auth) {
+      return redirect("/chat");
+    }
+    return redirect("/login");
+  }
+
+  // Auth not configured — redirect to chat (dev mode)
+  return redirect("/chat");
+}
 
 export function meta(_args: Route.MetaArgs) {
   return [
@@ -8,16 +26,5 @@ export function meta(_args: Route.MetaArgs) {
 }
 
 export default function Home() {
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-white dark:bg-gray-950">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-gray-900 dark:text-white">
-          Torah Chat
-        </h1>
-        <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-          Chatbot IA avec sources
-        </p>
-      </div>
-    </main>
-  );
+  return null;
 }

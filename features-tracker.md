@@ -32,13 +32,13 @@
 - [x] Gestion erreur Sefaria (fallback : réponse sans sources + message)
 
 ## Phase 4 — P0 Authentification
-- [ ] Inscription email + password (validation, email de confirmation)
-- [ ] Connexion email + password
-- [ ] Google OAuth (bouton "Continuer avec Google")
-- [ ] JWT : access token (15min) + refresh token (7j) en cookies httpOnly
-- [ ] Mot de passe oublié (email avec lien reset, token expire 1h)
-- [ ] Protection brute force (5 essais ratés → blocage 15 min)
-- [ ] Page profil utilisateur (lecture : email, nom, langue, plan, questions restantes)
+- [x] Inscription email + password (validation, email de confirmation)
+- [x] Connexion email + password
+- [x] Google OAuth (bouton "Continuer avec Google")
+- [x] JWT : access token (15min) + refresh token (7j) en cookies httpOnly
+- [x] Mot de passe oublié (email avec lien reset, token expire 1h)
+- [x] Protection brute force (5 essais ratés → blocage 15 min)
+- [x] Page profil utilisateur (lecture : email, nom, langue, plan, questions restantes)
 
 ## Phase 5 — P0 Gestion des Conversations
 - [ ] CRUD conversations (créer, lister, lire, supprimer)

@@ -1,10 +1,23 @@
 import type { Route } from "./+types/chat";
+import { Link } from "react-router";
 import { useChat } from "~/lib/use-chat";
 import { useAutoScroll } from "~/lib/use-auto-scroll";
 import { ChatInput } from "~/components/ChatInput";
 import { ChatMessage } from "~/components/ChatMessage";
 import { TypingIndicator } from "~/components/TypingIndicator";
 import { ChatErrorBanner } from "~/components/ChatErrorBanner";
+import { requireAuth } from "~/lib/auth/middleware";
+
+export async function loader({ request, context }: Route.LoaderArgs) {
+  const env = context.cloudflare.env;
+  const jwtSecret = (env as Record<string, string>).JWT_SECRET;
+  if (!jwtSecret) {
+    // Auth not configured — allow access (dev mode)
+    return null;
+  }
+  await requireAuth(request, jwtSecret);
+  return null;
+}
 
 export function meta(_args: Route.MetaArgs) {
   return [
@@ -32,6 +45,12 @@ export default function Chat() {
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
             Torah Chat
           </h1>
+          <Link
+            to="/profile"
+            className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            Mon profil
+          </Link>
         </div>
       </header>
 
