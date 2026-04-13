@@ -16,3 +16,5 @@
 .dev.vars*
 worker-configuration.d.ts
 
+# Cron logs
+/logs/

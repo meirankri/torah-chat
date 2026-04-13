@@ -10,8 +10,8 @@ import { requireAuth } from "~/lib/auth/middleware";
 
 const MAX_HISTORY_MESSAGES = 10;
 const MAX_SEFARIA_SOURCES = 5;
-const SEFARIA_TIMEOUT_MS = 8_000;
-const GEMINI_EXTRACT_TIMEOUT_MS = 5_000;
+const SEFARIA_TIMEOUT_MS = 15_000;
+const GEMINI_EXTRACT_TIMEOUT_MS = 10_000;
 
 function chatErrorResponse(code: ChatErrorCode, message: string, status: number) {
   return Response.json({ code, message }, { status });
@@ -98,28 +98,62 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   // Step 1: Gemini extracts search keywords from the question
   let sefariaResults: SefariaSourceResult[] = [];
+  let sourcesError: string | undefined;
   try {
+    console.log(`[Chat API] Step 1: Extracting keywords for "${content.trim().slice(0, 80)}..."`);
     const keywords = await Promise.race([
       gemini.extractSearchQueries(content.trim()),
       new Promise<string[]>((resolve) =>
-        setTimeout(() => resolve([]), GEMINI_EXTRACT_TIMEOUT_MS)
+        setTimeout(() => {
+          console.warn("[Chat API] Gemini keyword extraction timed out");
+          resolve([]);
+        }, GEMINI_EXTRACT_TIMEOUT_MS)
       ),
     ]);
 
+    console.log(`[Chat API] Keywords extracted: ${keywords.length > 0 ? keywords.join(", ") : "(none)"}`);
+
     if (keywords.length > 0) {
       // Step 2: Search Sefaria with the keywords and fetch matching texts
+      console.log("[Chat API] Step 2: Searching Sefaria by keywords...");
       const searchResults = await Promise.race([
         sefaria.searchByKeywords(keywords, "french", MAX_SEFARIA_SOURCES),
         new Promise<SefariaSourceResult[]>((resolve) =>
-          setTimeout(() => resolve([]), SEFARIA_TIMEOUT_MS)
+          setTimeout(() => {
+            console.warn("[Chat API] Sefaria keyword search timed out");
+            resolve([]);
+          }, SEFARIA_TIMEOUT_MS)
         ),
       ]);
 
       sefariaResults = searchResults;
+      console.log(`[Chat API] Sefaria keyword search: ${sefariaResults.length} results`);
+
+      // Step 2b: Fallback to find-refs if keyword search returned nothing
+      if (sefariaResults.length === 0) {
+        console.log("[Chat API] Step 2b: Fallback — trying Sefaria find-refs (Linker API)...");
+        const fallbackResults = await Promise.race([
+          sefaria.getSourcesForText(content.trim(), "french", MAX_SEFARIA_SOURCES),
+          new Promise<SefariaSourceResult[]>((resolve) =>
+            setTimeout(() => {
+              console.warn("[Chat API] Sefaria find-refs fallback timed out");
+              resolve([]);
+            }, SEFARIA_TIMEOUT_MS)
+          ),
+        ]);
+        sefariaResults = fallbackResults;
+        console.log(`[Chat API] Sefaria find-refs fallback: ${sefariaResults.length} results`);
+      }
+    } else {
+      sourcesError = "Impossible d'extraire des mots-clés pour la recherche de sources.";
     }
   } catch (error) {
-    console.error("Sefaria pre-fetch error:", error);
-    // Continue without sources
+    console.error("[Chat API] Sources fetch error:", error);
+    sourcesError = "Erreur lors de la recherche des sources.";
+  }
+
+  if (sefariaResults.length === 0 && !sourcesError) {
+    sourcesError = "Aucune source trouvée pour cette question.";
   }
 
   // Step 3: Build system prompt with source context and stream Gemini response
@@ -138,10 +172,14 @@ export async function action({ request, context }: Route.ActionArgs) {
   try {
     const responseText = await gemini.chat(systemPrompt, geminiHistory, content.trim());
 
-    const payload = {
+    const payload: { response: string; sources: typeof sourcesForFrontend; sourcesError?: string } = {
       response: responseText,
       sources: sourcesForFrontend,
     };
+
+    if (sourcesError) {
+      payload.sourcesError = sourcesError;
+    }
 
     return Response.json(payload);
   } catch (error) {

@@ -6,6 +6,7 @@ import type { MessageSource } from "~/domain/entities/source";
 interface ChatApiResponse {
   response: string;
   sources: MessageSource[];
+  sourcesError?: string;
 }
 
 interface UseChatReturn {
@@ -104,6 +105,7 @@ export function useChat(): UseChatReturn {
                 content: data.response,
                 sources: sources.length > 0 ? sources : undefined,
                 sourcesLoading: false,
+                sourcesError: data.sourcesError,
               }
             : m
         )

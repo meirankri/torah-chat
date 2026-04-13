@@ -116,23 +116,37 @@ export class SefariaClient {
         .map((v) => stripHtml(flattenText(v.text)))
         .join(" ");
 
-      // Fetch translation
+      // Fetch translation — try requested language, fallback to English
       let translationText: string | null = null;
-      const translationUrl = `${this.baseUrl}/api/v3/texts/${encodeURIComponent(ref)}?version=${translationLang}`;
-      try {
-        const translationResponse = await fetch(translationUrl);
-        if (translationResponse.ok) {
-          const translationData =
-            (await translationResponse.json()) as SefariaTextResponse;
-          const translationVersions = translationData.versions.filter(
-            (v) => v.language !== "he"
-          );
-          if (translationVersions.length > 0 && translationVersions[0]) {
-            translationText = stripHtml(flattenText(translationVersions[0].text));
+      let actualTranslationLang = translationLang;
+      const langsToTry = translationLang === "english"
+        ? ["english"]
+        : [translationLang, "english"];
+
+      for (const lang of langsToTry) {
+        try {
+          const translationUrl = `${this.baseUrl}/api/v3/texts/${encodeURIComponent(ref)}?version=${lang}`;
+          const translationResponse = await fetch(translationUrl);
+          if (translationResponse.ok) {
+            const translationData =
+              (await translationResponse.json()) as SefariaTextResponse;
+            const translationVersions = translationData.versions.filter(
+              (v) => v.language !== "he"
+            );
+            if (translationVersions.length > 0 && translationVersions[0]) {
+              translationText = stripHtml(flattenText(translationVersions[0].text));
+              actualTranslationLang = lang;
+              console.log(`[Sefaria] getText: translation found for ${ref} in ${lang}`);
+              break;
+            }
           }
+        } catch {
+          // Translation not available in this language, try next
         }
-      } catch {
-        // Translation not available, continue without it
+      }
+
+      if (!translationText) {
+        console.log(`[Sefaria] getText: no translation found for ${ref}`);
       }
 
       const category =
@@ -145,7 +159,7 @@ export class SefariaClient {
         heRef: hebrewData.heRef,
         textHebrew: hebrewText,
         textTranslation: translationText,
-        translationLanguage: translationLang,
+        translationLanguage: actualTranslationLang,
         category,
         sefariaUrl: `${this.baseUrl}/${encodeURIComponent(ref)}`,
       };
@@ -170,6 +184,7 @@ export class SefariaClient {
     maxSources: number = 5
   ): Promise<SefariaSourceResult[]> {
     const refs = await this.findRefs(text);
+    console.log(`[Sefaria] getSourcesForText: ${refs.length} refs found via find-refs`);
     if (refs.length === 0) return [];
 
     const limitedRefs = refs.slice(0, maxSources);
@@ -197,6 +212,7 @@ export class SefariaClient {
   ): Promise<SefariaSourceResult[]> {
     const query = keywords.join(" ");
     const searchUrl = `${this.baseUrl}/api/search/text/_search`;
+    console.log(`[Sefaria] searchByKeywords: query="${query}", url=${searchUrl}`);
 
     try {
       const response = await fetch(searchUrl, {
@@ -216,7 +232,8 @@ export class SefariaClient {
       });
 
       if (!response.ok) {
-        console.error(`Sefaria search failed: ${response.status}`);
+        const errorBody = await response.text().catch(() => "unknown");
+        console.error(`[Sefaria] searchByKeywords failed: status=${response.status}, body=${errorBody}`);
         return [];
       }
 
@@ -225,6 +242,7 @@ export class SefariaClient {
       };
 
       const hits = data.hits?.hits ?? [];
+      console.log(`[Sefaria] searchByKeywords: ${hits.length} hits found`);
       if (hits.length === 0) return [];
 
       // Deduplicate by ref

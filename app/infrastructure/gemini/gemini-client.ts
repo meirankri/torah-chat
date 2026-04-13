@@ -60,7 +60,8 @@ export class GeminiClient {
     });
 
     if (!response.ok) {
-      console.error(`Gemini search query extraction failed: ${response.status}`);
+      const errorBody = await response.text().catch(() => "unknown");
+      console.error(`[Gemini] extractSearchQueries failed: status=${response.status}, body=${errorBody}`);
       return [];
     }
 
@@ -75,9 +76,11 @@ export class GeminiClient {
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) return [];
       const parsed = JSON.parse(jsonMatch[0]) as GeminiSearchQuery;
-      return parsed.queries ?? [];
+      const queries = parsed.queries ?? [];
+      console.log(`[Gemini] extractSearchQueries: ${queries.length} keyword groups extracted:`, queries);
+      return queries;
     } catch {
-      console.error("Failed to parse Gemini search queries:", text);
+      console.error("[Gemini] extractSearchQueries: failed to parse JSON from response:", text);
       return [];
     }
   }
