@@ -71,24 +71,24 @@ describe("getPlanLimit", () => {
 
 describe("getModelForPlan", () => {
   const env = {
-    WORKERS_AI_MODEL_FREE: "free-model",
     WORKERS_AI_MODEL_STANDARD: "standard-model",
+    WORKERS_AI_MODEL_PREMIUM: "premium-model",
   };
 
-  it("free_trial → free model", () => {
-    expect(getModelForPlan("free_trial", env)).toBe("free-model");
+  it("free_trial → standard model (70B, pas de modèle dégradé)", () => {
+    expect(getModelForPlan("free_trial", env)).toBe("standard-model");
   });
 
   it("standard → standard model", () => {
     expect(getModelForPlan("standard", env)).toBe("standard-model");
   });
 
-  it("premium → standard model", () => {
-    expect(getModelForPlan("premium", env)).toBe("standard-model");
+  it("premium → premium model", () => {
+    expect(getModelForPlan("premium", env)).toBe("premium-model");
   });
 
-  it("expired → free model", () => {
-    expect(getModelForPlan("expired", env)).toBe("free-model");
+  it("expired → standard model", () => {
+    expect(getModelForPlan("expired", env)).toBe("standard-model");
   });
 });
 

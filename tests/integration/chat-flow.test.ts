@@ -75,33 +75,33 @@ describe("Chat flow integration", () => {
   });
 
   describe("Workers AI fallback", () => {
-    it("sélectionne le bon modèle Workers AI selon le plan free_trial", () => {
+    it("utilise 70B pour free_trial (pas de modèle dégradé)", () => {
       const env = {
-        WORKERS_AI_MODEL_FREE: "@cf/meta/llama-3.1-8b-instruct",
         WORKERS_AI_MODEL_STANDARD: "@cf/meta/llama-3.1-70b-instruct",
+        WORKERS_AI_MODEL_PREMIUM: "@cf/meta/llama-3.1-70b-instruct",
       };
-      expect(getModelForPlan("free_trial", env)).toBe("@cf/meta/llama-3.1-8b-instruct");
+      expect(getModelForPlan("free_trial", env)).toBe("@cf/meta/llama-3.1-70b-instruct");
     });
 
-    it("sélectionne le bon modèle Workers AI selon le plan standard", () => {
+    it("utilise 70B pour le plan standard", () => {
       const env = {
-        WORKERS_AI_MODEL_FREE: "@cf/meta/llama-3.1-8b-instruct",
         WORKERS_AI_MODEL_STANDARD: "@cf/meta/llama-3.1-70b-instruct",
+        WORKERS_AI_MODEL_PREMIUM: "@cf/meta/llama-3.1-70b-instruct",
       };
       expect(getModelForPlan("standard", env)).toBe("@cf/meta/llama-3.1-70b-instruct");
     });
 
-    it("sélectionne le bon modèle Workers AI selon le plan premium", () => {
+    it("utilise WORKERS_AI_MODEL_PREMIUM pour le plan premium", () => {
       const env = {
-        WORKERS_AI_MODEL_FREE: "@cf/meta/llama-3.1-8b-instruct",
         WORKERS_AI_MODEL_STANDARD: "@cf/meta/llama-3.1-70b-instruct",
+        WORKERS_AI_MODEL_PREMIUM: "@cf/meta/llama-3.1-70b-instruct",
       };
       expect(getModelForPlan("premium", env)).toBe("@cf/meta/llama-3.1-70b-instruct");
     });
 
-    it("utilise le modèle par défaut si la variable d'env est absente", () => {
+    it("utilise le modèle par défaut 70B si la variable d'env est absente", () => {
       const env = {};
-      expect(getModelForPlan("free_trial", env)).toBe("@cf/meta/llama-3.1-8b-instruct");
+      expect(getModelForPlan("free_trial", env)).toBe("@cf/meta/llama-3.1-70b-instruct");
       expect(getModelForPlan("standard", env)).toBe("@cf/meta/llama-3.1-70b-instruct");
     });
 
