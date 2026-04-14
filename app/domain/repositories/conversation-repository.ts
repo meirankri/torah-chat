@@ -11,4 +11,5 @@ export interface ConversationRepository {
   getMessages(conversationId: string, limit?: number): Promise<Message[]>;
   addSources(sources: MessageSource[]): Promise<void>;
   getSourcesForMessage(messageId: string): Promise<MessageSource[]>;
+  saveFeedback(messageId: string, userId: string, rating: 1 | -1): Promise<void>;
 }

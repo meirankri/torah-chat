@@ -9,6 +9,7 @@ interface ChatApiResponse {
   sources: MessageSource[];
   sourcesError?: string;
   conversationId?: string;
+  quotaInfo?: { used: number; limit: number | null };
 }
 
 interface UseChatOptions {
@@ -22,6 +23,7 @@ interface UseChatReturn {
   isLoading: boolean;
   error: ChatError | null;
   conversationId: string | null;
+  quotaInfo: { used: number; limit: number | null } | null;
   sendMessage: (content: string) => Promise<void>;
   stopGeneration: () => void;
   regenerateLastResponse: () => Promise<void>;
@@ -41,6 +43,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   const [conversationId, setConversationId] = useState<string | null>(
     options.conversationId ?? null
   );
+  const [quotaInfo, setQuotaInfo] = useState<{ used: number; limit: number | null } | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const exchangeCountRef = useRef(0);
   // Keep a ref to the last user message for regeneration
@@ -139,6 +142,11 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
         options.onConversationCreated?.(data.conversationId);
       }
 
+      // Update quota info
+      if (data.quotaInfo) {
+        setQuotaInfo(data.quotaInfo);
+      }
+
       const sources: MessageSource[] = (data.sources ?? []).map((s) => ({
         ...s,
         messageId: assistantMessageId,
@@ -203,6 +211,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     isLoading,
     error,
     conversationId,
+    quotaInfo,
     sendMessage,
     stopGeneration,
     regenerateLastResponse,

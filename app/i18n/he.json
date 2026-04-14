@@ -38,6 +38,10 @@
     "regenerate": "צור מחדש",
     "copy": "העתק",
     "copied": "הועתק!",
+    "feedbackHelpful": "מועיל",
+    "feedbackNotHelpful": "לא מועיל",
+    "quotaWarning": "נותרו לך {{remaining}} שאלות החודש.",
+    "quotaWarningUpgrade": "שדרג תוכנית",
     "suggestedQuestions": [
       "מהו השבת?",
       "הסבר את מושג תיקון עולם",

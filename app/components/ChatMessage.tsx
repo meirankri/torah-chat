@@ -3,12 +3,15 @@ import { useTranslation } from "react-i18next";
 import type { ChatMessage as ChatMessageType } from "~/domain/entities/chat";
 import { SourceBlock } from "./SourceBlock";
 
+type FeedbackRating = 1 | -1 | null;
+
 const MarkdownRenderer = lazy(() =>
   import("./MarkdownRenderer.client").then((m) => ({ default: m.MarkdownRenderer }))
 );
 
 interface ChatMessageProps {
   message: ChatMessageType;
+  onFeedback?: (messageId: string, rating: 1 | -1) => Promise<void>;
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -45,7 +48,75 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
+function FeedbackButtons({
+  messageId,
+  onFeedback,
+}: {
+  messageId: string;
+  onFeedback: (messageId: string, rating: 1 | -1) => Promise<void>;
+}) {
+  const { t } = useTranslation();
+  const [rating, setRating] = useState<FeedbackRating>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleFeedback = useCallback(
+    async (value: 1 | -1) => {
+      if (submitting) return;
+      const newRating = rating === value ? null : value;
+      setRating(newRating);
+      if (newRating !== null) {
+        setSubmitting(true);
+        try {
+          await onFeedback(messageId, newRating);
+        } catch {
+          // non-blocking
+        } finally {
+          setSubmitting(false);
+        }
+      }
+    },
+    [messageId, onFeedback, rating, submitting]
+  );
+
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        onClick={() => handleFeedback(1)}
+        disabled={submitting}
+        className={`rounded p-1 transition-colors ${
+          rating === 1
+            ? "text-green-500"
+            : "text-gray-400 hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+        }`}
+        title={t("chat.feedbackHelpful")}
+        aria-label={t("chat.feedbackHelpful")}
+        aria-pressed={rating === 1}
+      >
+        <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M1 8.25a1.25 1.25 0 1 1 2.5 0v7.5a1.25 1.25 0 0 1-2.5 0v-7.5zM11 3V1.7c0-.268.14-.526.395-.607A2 2 0 0 1 14 3c0 .995-.182 1.948-.514 2.826-.204.54.166 1.174.744 1.174h2.52c1.243 0 2.261 1.01 2.146 2.247a23.864 23.864 0 0 1-1.341 5.974C17.153 16.323 16.072 17 14.9 17H8c-.943 0-1.836-.383-2.495-1.06l-.014-.015A9.916 9.916 0 0 1 4 9.572V8.25a1.75 1.75 0 0 1 1.75-1.75H9.5a.75.75 0 0 0 .75-.75V3z" />
+        </svg>
+      </button>
+      <button
+        onClick={() => handleFeedback(-1)}
+        disabled={submitting}
+        className={`rounded p-1 transition-colors ${
+          rating === -1
+            ? "text-red-500"
+            : "text-gray-400 hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+        }`}
+        title={t("chat.feedbackNotHelpful")}
+        aria-label={t("chat.feedbackNotHelpful")}
+        aria-pressed={rating === -1}
+      >
+        <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+          <path d="M18.905 12.75a1.25 1.25 0 0 1-2.5 0v-7.5a1.25 1.25 0 0 1 2.5 0v7.5zM8.905 17v1.3c0 .268-.14.526-.395.607A2 2 0 0 1 5.905 17c0-.995.182-1.948.514-2.826.204-.54-.166-1.174-.744-1.174h-2.52c-1.243 0-2.261-1.01-2.146-2.247a23.864 23.864 0 0 1 1.341-5.974C2.752 3.678 3.833 3 5.005 3h6.9c.943 0 1.836.383 2.495 1.06l.014.015A9.914 9.914 0 0 1 15.905 10.428v1.322a1.75 1.75 0 0 1-1.75 1.75H10.405a.75.75 0 0 0-.75.75V17z" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+export function ChatMessage({ message, onFeedback }: ChatMessageProps) {
   const { t } = useTranslation();
   const isUser = message.role === "user";
 
@@ -70,13 +141,19 @@ export function ChatMessage({ message }: ChatMessageProps) {
           )}
         </div>
 
-        {/* Copy button for assistant messages with content */}
+        {/* Action buttons for assistant messages with content */}
         {!isUser && message.content && (
-          <div className="flex items-center gap-1 px-1">
+          <div className="flex items-center gap-2 px-1">
             <CopyButton text={message.content} />
             <span className="text-xs text-gray-400 dark:text-gray-500">
               {t("chat.copy")}
             </span>
+            {onFeedback && (
+              <>
+                <span className="text-gray-200 dark:text-gray-700">|</span>
+                <FeedbackButtons messageId={message.id} onFeedback={onFeedback} />
+              </>
+            )}
           </div>
         )}
 

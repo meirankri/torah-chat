@@ -81,6 +81,10 @@
 - [x] Emails transactionnels Brevo (confirmation inscription, reset password, rappel trial)
 - [x] Apple Sign-In
 
+## Phase 11 — P2 Améliorations UX
+- [x] Feedback 👍/👎 sur chaque réponse (stocké en DB, table message_feedback)
+- [x] Notification quota 80% : bannière amber avec CTA upgrade vers /pricing
+
 ## Phase 10 — DevOps / Production
 - [x] GitHub Actions CI/CD (tests + build + deploy Cloudflare Workers sur push main)
 - [x] .env.example complet (toutes les variables, Apple Sign-In, CRON_SECRET, GEMINI_API_KEY)

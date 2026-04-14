@@ -109,6 +109,7 @@ export async function action({ request, context }: Route.ActionArgs) {
   }
 
   // Quota check: enforce per-plan limits and model selection
+  let quotaInfo: { used: number; limit: number | null } | undefined;
   if (userId && env.DB) {
     const userRepo = new D1UserRepository(env.DB);
     const user = await userRepo.findById(userId);
@@ -135,6 +136,8 @@ export async function action({ request, context }: Route.ActionArgs) {
           429
         );
       }
+
+      quotaInfo = { used: quotaResult.questionsUsed, limit: quotaResult.questionsLimit };
     }
   }
 
@@ -349,6 +352,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     sources: typeof sourcesForFrontend;
     sourcesError?: string;
     conversationId?: string;
+    quotaInfo?: { used: number; limit: number | null };
   } = {
     response: responseText,
     sources: sourcesForFrontend,
@@ -360,6 +364,10 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   if (dbConversationId) {
     payload.conversationId = dbConversationId;
+  }
+
+  if (quotaInfo) {
+    payload.quotaInfo = quotaInfo;
   }
 
   return Response.json(payload);

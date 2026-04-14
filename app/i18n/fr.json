@@ -38,6 +38,10 @@
     "regenerate": "Régénérer",
     "copy": "Copier",
     "copied": "Copié !",
+    "feedbackHelpful": "Utile",
+    "feedbackNotHelpful": "Pas utile",
+    "quotaWarning": "Il vous reste {{remaining}} questions ce mois.",
+    "quotaWarningUpgrade": "Passer à un plan supérieur",
     "suggestedQuestions": [
       "Qu'est-ce que le Shabbat ?",
       "Expliquez le concept de Tikoun Olam",

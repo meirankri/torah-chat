@@ -194,4 +194,26 @@ describe("D1ConversationRepository", () => {
 
     expect(result.title).toBe("New Title");
   });
+
+  it("saveFeedback appelle INSERT avec ON CONFLICT", async () => {
+    mockRun.mockResolvedValueOnce({});
+
+    const repo = new D1ConversationRepository(db);
+    await repo.saveFeedback("msg-1", "user-1", 1);
+
+    expect(db.prepare).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO message_feedback")
+    );
+    expect(db.prepare).toHaveBeenCalledWith(
+      expect.stringContaining("ON CONFLICT(message_id, user_id)")
+    );
+    expect(mockRun).toHaveBeenCalled();
+  });
+
+  it("saveFeedback accepte rating -1 (👎)", async () => {
+    mockRun.mockResolvedValueOnce({});
+
+    const repo = new D1ConversationRepository(db);
+    await expect(repo.saveFeedback("msg-1", "user-1", -1)).resolves.toBeUndefined();
+  });
 });

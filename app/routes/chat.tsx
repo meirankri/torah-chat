@@ -12,6 +12,7 @@ import { ChatErrorBanner } from "~/components/ChatErrorBanner";
 import { ConversationSidebar } from "~/components/ConversationSidebar";
 import { LanguageSelector } from "~/components/LanguageSelector";
 import { PwaInstallBanner } from "~/components/PwaInstallBanner";
+import { QuotaWarningBanner } from "~/components/QuotaWarningBanner";
 import { requireAuth } from "~/lib/auth/middleware";
 import type { ChatMessage as ChatMessageType } from "~/domain/entities/chat";
 
@@ -64,6 +65,7 @@ export default function Chat() {
     messages,
     isLoading,
     error,
+    quotaInfo,
     sendMessage,
     stopGeneration,
     regenerateLastResponse,
@@ -71,6 +73,18 @@ export default function Chat() {
     clearMessages,
     setMessages,
   } = useChat(chatOptions);
+
+  const handleFeedback = useCallback(async (messageId: string, rating: 1 | -1) => {
+    try {
+      await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId, rating }),
+      });
+    } catch {
+      // non-blocking
+    }
+  }, []);
 
   const lastMessageContent = messages[messages.length - 1]?.content ?? "";
   const { containerRef } = useAutoScroll(lastMessageContent);
@@ -163,6 +177,11 @@ export default function Chat() {
         {/* Error banner */}
         {error && <ChatErrorBanner error={error} onDismiss={clearError} />}
 
+        {/* Quota warning banner (at 80%+ usage) */}
+        {quotaInfo && quotaInfo.limit !== null && (
+          <QuotaWarningBanner used={quotaInfo.used} limit={quotaInfo.limit} />
+        )}
+
         {/* Messages area */}
         <div ref={containerRef} className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-3xl space-y-4 px-4 py-6">
@@ -193,7 +212,11 @@ export default function Chat() {
             )}
 
             {messages.map((msg) => (
-              <ChatMessage key={msg.id} message={msg} />
+              <ChatMessage
+                key={msg.id}
+                message={msg}
+                onFeedback={msg.role === "assistant" ? handleFeedback : undefined}
+              />
             ))}
 
             {showTyping && <TypingIndicator />}

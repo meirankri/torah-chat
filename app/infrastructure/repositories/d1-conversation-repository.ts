@@ -234,4 +234,18 @@ export class D1ConversationRepository implements ConversationRepository {
       .all<D1SourceRow>();
     return results.map(rowToSource);
   }
+
+  async saveFeedback(messageId: string, userId: string, rating: 1 | -1): Promise<void> {
+    const id = crypto.randomUUID();
+    const now = new Date().toISOString();
+    // INSERT OR REPLACE handles the UNIQUE(message_id, user_id) constraint — updates existing vote
+    await this.db
+      .prepare(
+        `INSERT INTO message_feedback (id, message_id, user_id, rating, created_at)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(message_id, user_id) DO UPDATE SET rating = excluded.rating`
+      )
+      .bind(id, messageId, userId, rating, now)
+      .run();
+  }
 }
