@@ -2,6 +2,9 @@
 export PATH="/Users/meirankri/.local/bin:/Users/meirankri/.nvm/versions/node/v24.11.0/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
 export HOME="/Users/meirankri"
 
+# Récupérer le token OAuth Claude depuis le Keychain macOS
+export CLAUDE_CODE_OAUTH_TOKEN=$(security find-generic-password -s 'Claude Code-credentials' -w 2>/dev/null)
+
 cd /Users/meirankri/Documents/torah-chat
 
 # Logs horodatés par run
@@ -10,6 +13,12 @@ mkdir -p "$LOG_DIR"
 LOG="$LOG_DIR/cron-$(date +%Y%m%d-%H%M%S).log"
 
 echo "=== Run started at $(date) ===" >> "$LOG"
+
+# Vérifier que le token OAuth est disponible
+if [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ]; then
+  echo "ERROR: Could not retrieve OAuth token from Keychain" >> "$LOG"
+  exit 1
+fi
 
 # Garde-fou anti-exécution simultanée
 LOCKFILE="/tmp/torah-chat-cron.lock"
