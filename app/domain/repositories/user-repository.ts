@@ -6,6 +6,7 @@ export interface UserRepository {
   findByProvider(provider: AuthProvider, providerId: string): Promise<User | null>;
   create(input: CreateUserInput): Promise<User>;
   update(id: string, data: Partial<User>): Promise<User>;
+  delete(id: string): Promise<void>;
   incrementQuestions(id: string): Promise<void>;
   resetMonthlyQuestions(id: string): Promise<void>;
   findByStripeCustomerId(customerId: string): Promise<User | null>;

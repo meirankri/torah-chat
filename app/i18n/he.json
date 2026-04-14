@@ -136,7 +136,16 @@
     "logout": "התנתקות",
     "loggingOut": "...",
     "manageSubscription": "ניהול המנוי",
-    "upgradePlan": "שנה תוכנית"
+    "upgradePlan": "שנה תוכנית",
+    "editName": "ערוך",
+    "saveName": "שמור",
+    "cancelEdit": "ביטול",
+    "nameUpdated": "השם עודכן",
+    "deleteAccount": "מחק את חשבוני",
+    "deleteAccountConfirm": "האם אתה בטוח? פעולה זו בלתי הפיכה. כל השיחות שלך יימחקו.",
+    "deleteAccountConfirmButton": "כן, מחק לצמיתות",
+    "deleteAccountCancel": "ביטול",
+    "deleting": "מוחק..."
   },
   "sources": {
     "viewOnSefaria": "צפה ב-Sefaria",

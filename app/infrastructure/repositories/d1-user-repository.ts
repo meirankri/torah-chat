@@ -167,6 +167,13 @@ export class D1UserRepository implements UserRepository {
     return user;
   }
 
+  async delete(id: string): Promise<void> {
+    await this.db
+      .prepare("DELETE FROM users WHERE id = ?")
+      .bind(id)
+      .run();
+  }
+
   async incrementQuestions(id: string): Promise<void> {
     await this.db
       .prepare(

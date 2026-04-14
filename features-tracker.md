@@ -84,6 +84,8 @@
 ## Phase 11 — P2 Améliorations UX
 - [x] Feedback 👍/👎 sur chaque réponse (stocké en DB, table message_feedback)
 - [x] Notification quota 80% : bannière amber avec CTA upgrade vers /pricing
+- [x] Modification du nom dans le profil (édition inline avec PATCH /api/profile)
+- [x] Suppression de compte RGPD (DELETE /api/profile — annule Stripe + supprime toutes les données, confirmation modale)
 
 ## Phase 10 — DevOps / Production
 - [x] GitHub Actions CI/CD (tests + build + deploy Cloudflare Workers sur push main)

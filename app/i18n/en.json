@@ -136,7 +136,16 @@
     "logout": "Sign out",
     "loggingOut": "...",
     "manageSubscription": "Manage subscription",
-    "upgradePlan": "Change plan"
+    "upgradePlan": "Change plan",
+    "editName": "Edit",
+    "saveName": "Save",
+    "cancelEdit": "Cancel",
+    "nameUpdated": "Name updated",
+    "deleteAccount": "Delete my account",
+    "deleteAccountConfirm": "Are you sure? This action is irreversible. All your conversations will be deleted.",
+    "deleteAccountConfirmButton": "Yes, delete permanently",
+    "deleteAccountCancel": "Cancel",
+    "deleting": "Deleting..."
   },
   "sources": {
     "viewOnSefaria": "View on Sefaria",
