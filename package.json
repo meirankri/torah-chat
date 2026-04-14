@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "react-router build",
+    "build:cf": "npm install && react-router build",
     "cf-typegen": "wrangler types",
     "deploy": "react-router build && wrangler deploy",
     "dev": "react-router dev",
