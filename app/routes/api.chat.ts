@@ -151,8 +151,8 @@ export async function action({ request, context }: Route.ActionArgs) {
     const userForModel = await new D1UserRepository(env.DB).findById(userId);
     if (userForModel) userPlanForModel = userForModel.plan;
   }
-  // Log selected model for monitoring purposes (used when Workers AI replaces Gemini)
-  void getModelForPlan(userPlanForModel, env as Record<string, string>);
+  // Determine Workers AI model (used as fallback if Gemini fails)
+  const workersAiModel = getModelForPlan(userPlanForModel, env as Record<string, string>);
 
   const baseUrl = (env as Record<string, string>).SEFARIA_BASE_URL || "https://www.sefaria.org";
   const cacheTtl = parseInt(
@@ -286,55 +286,84 @@ export async function action({ request, context }: Route.ActionArgs) {
   const sourcesForFrontend =
     sefariaResults.length > 0 ? mapSefariaResultsToSources(sefariaResults, "pending") : [];
 
+  let responseText: string;
   try {
-    const responseText = await gemini.chat(systemPrompt, geminiHistory, content.trim());
-
-    // Save messages to DB if we have a conversation
-    if (repo && dbConversationId) {
-      try {
-        await repo.addMessage(dbConversationId, "user", content.trim());
-        const assistantMsg = await repo.addMessage(dbConversationId, "assistant", responseText);
-
-        if (sourcesForFrontend.length > 0) {
-          const sourcesWithMessageId = sourcesForFrontend.map((s) => ({
-            ...s,
-            messageId: assistantMsg.id,
-          }));
-          await repo.addSources(sourcesWithMessageId);
-        }
-      } catch (dbError) {
-        console.error("[Chat API] DB save error (non-blocking):", dbError);
-      }
-    }
-
-    const payload: {
-      response: string;
-      sources: typeof sourcesForFrontend;
-      sourcesError?: string;
-      conversationId?: string;
-    } = {
-      response: responseText,
-      sources: sourcesForFrontend,
-    };
-
-    if (sourcesError) {
-      payload.sourcesError = sourcesError;
-    }
-
-    if (dbConversationId) {
-      payload.conversationId = dbConversationId;
-    }
-
-    return Response.json(payload);
-  } catch (error) {
-    console.error("Chat API error:", error);
-    const isOverloaded = error instanceof Error && error.message === "GEMINI_OVERLOADED";
-    return chatErrorResponse(
-      "API_DOWN",
-      isOverloaded
-        ? "Le service IA gratuit est actuellement surchargé (trop de requêtes). Veuillez réessayer dans quelques minutes ou prendre un abonnement payant."
-        : "The AI service is temporarily unavailable. Please try again later.",
-      503
+    responseText = await gemini.chat(systemPrompt, geminiHistory, content.trim());
+  } catch (geminiError) {
+    console.warn(
+      "[Chat API] Gemini failed, trying Workers AI fallback with model:",
+      workersAiModel,
+      geminiError instanceof Error ? geminiError.message : geminiError
     );
+
+    if (!env.AI) {
+      console.error("[Chat API] Workers AI binding (env.AI) not available");
+      return chatErrorResponse("API_DOWN", "AI service is temporarily unavailable.", 503);
+    }
+
+    try {
+      const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
+        { role: "system", content: systemPrompt },
+        ...recentHistory.map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })),
+        { role: "user", content: content.trim() },
+      ];
+
+      const aiResult = await (env.AI as {
+        run: (
+          model: string,
+          input: { messages: typeof messages }
+        ) => Promise<{ response?: string }>;
+      }).run(workersAiModel, { messages });
+
+      if (!aiResult.response) {
+        throw new Error("Workers AI returned empty response");
+      }
+      responseText = aiResult.response;
+      console.log("[Chat API] Workers AI fallback succeeded");
+    } catch (fallbackError) {
+      console.error("[Chat API] Workers AI fallback also failed:", fallbackError);
+      return chatErrorResponse("API_DOWN", "AI service is temporarily unavailable.", 503);
+    }
   }
+
+  // Save messages to DB if we have a conversation
+  if (repo && dbConversationId) {
+    try {
+      await repo.addMessage(dbConversationId, "user", content.trim());
+      const assistantMsg = await repo.addMessage(dbConversationId, "assistant", responseText);
+
+      if (sourcesForFrontend.length > 0) {
+        const sourcesWithMessageId = sourcesForFrontend.map((s) => ({
+          ...s,
+          messageId: assistantMsg.id,
+        }));
+        await repo.addSources(sourcesWithMessageId);
+      }
+    } catch (dbError) {
+      console.error("[Chat API] DB save error (non-blocking):", dbError);
+    }
+  }
+
+  const payload: {
+    response: string;
+    sources: typeof sourcesForFrontend;
+    sourcesError?: string;
+    conversationId?: string;
+  } = {
+    response: responseText,
+    sources: sourcesForFrontend,
+  };
+
+  if (sourcesError) {
+    payload.sourcesError = sourcesError;
+  }
+
+  if (dbConversationId) {
+    payload.conversationId = dbConversationId;
+  }
+
+  return Response.json(payload);
 }

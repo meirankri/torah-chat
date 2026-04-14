@@ -1,7 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { buildLLMMessages } from "~/application/services/chat-service";
 import { MAX_INPUT_LENGTH } from "~/domain/entities/chat";
 import type { ChatMessage, ChatError, ChatErrorCode } from "~/domain/entities/chat";
+import { getModelForPlan } from "~/application/services/quota-service";
 
 describe("Chat flow integration", () => {
   describe("Message flow validation", () => {
@@ -70,6 +71,65 @@ describe("Chat flow integration", () => {
 
       expect(errors).toHaveLength(6);
       expect(new Set(errors.map((e) => e.code)).size).toBe(6);
+    });
+  });
+
+  describe("Workers AI fallback", () => {
+    it("sélectionne le bon modèle Workers AI selon le plan free_trial", () => {
+      const env = {
+        WORKERS_AI_MODEL_FREE: "@cf/meta/llama-3.1-8b-instruct",
+        WORKERS_AI_MODEL_STANDARD: "@cf/meta/llama-3.1-70b-instruct",
+      };
+      expect(getModelForPlan("free_trial", env)).toBe("@cf/meta/llama-3.1-8b-instruct");
+    });
+
+    it("sélectionne le bon modèle Workers AI selon le plan standard", () => {
+      const env = {
+        WORKERS_AI_MODEL_FREE: "@cf/meta/llama-3.1-8b-instruct",
+        WORKERS_AI_MODEL_STANDARD: "@cf/meta/llama-3.1-70b-instruct",
+      };
+      expect(getModelForPlan("standard", env)).toBe("@cf/meta/llama-3.1-70b-instruct");
+    });
+
+    it("sélectionne le bon modèle Workers AI selon le plan premium", () => {
+      const env = {
+        WORKERS_AI_MODEL_FREE: "@cf/meta/llama-3.1-8b-instruct",
+        WORKERS_AI_MODEL_STANDARD: "@cf/meta/llama-3.1-70b-instruct",
+      };
+      expect(getModelForPlan("premium", env)).toBe("@cf/meta/llama-3.1-70b-instruct");
+    });
+
+    it("utilise le modèle par défaut si la variable d'env est absente", () => {
+      const env = {};
+      expect(getModelForPlan("free_trial", env)).toBe("@cf/meta/llama-3.1-8b-instruct");
+      expect(getModelForPlan("standard", env)).toBe("@cf/meta/llama-3.1-70b-instruct");
+    });
+
+    it("simule le fallback Workers AI quand Gemini échoue", async () => {
+      const mockAI = {
+        run: vi.fn().mockResolvedValue({ response: "Réponse depuis Workers AI" }),
+      };
+
+      const messages = [
+        { role: "system" as const, content: "Tu es un assistant Torah." },
+        { role: "user" as const, content: "Qu'est-ce que le Shabbat ?" },
+      ];
+
+      const result = await mockAI.run("@cf/meta/llama-3.1-8b-instruct", { messages });
+
+      expect(mockAI.run).toHaveBeenCalledWith("@cf/meta/llama-3.1-8b-instruct", { messages });
+      expect(result.response).toBe("Réponse depuis Workers AI");
+    });
+
+    it("remonte une erreur si Workers AI retourne une réponse vide", async () => {
+      const mockAI = {
+        run: vi.fn().mockResolvedValue({ response: undefined }),
+      };
+
+      const messages = [{ role: "user" as const, content: "test" }];
+      const result = await mockAI.run("@cf/meta/llama-3.1-8b-instruct", { messages });
+
+      expect(result.response).toBeUndefined();
     });
   });
 
