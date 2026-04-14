@@ -79,4 +79,4 @@
 - [x] Cache sources Sefaria dans KV (TTL 24h configurable)
 - [x] Rate limiting (30 req/min → HTTP 429)
 - [x] Emails transactionnels Brevo (confirmation inscription, reset password, rappel trial)
-- [ ] Apple Sign-In
+- [x] Apple Sign-In
