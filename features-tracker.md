@@ -76,7 +76,7 @@
 - [x] Bouton Regenerate (regénérer dernière réponse)
 - [x] Bouton Copy response
 - [x] Questions suggérées (3-4 chips au démarrage)
-- [ ] Cache sources Sefaria dans KV (TTL 24h configurable)
+- [x] Cache sources Sefaria dans KV (TTL 24h configurable)
 - [x] Rate limiting (30 req/min → HTTP 429)
-- [ ] Emails transactionnels Brevo (confirmation inscription, reset password, rappel trial)
+- [x] Emails transactionnels Brevo (confirmation inscription, reset password, rappel trial)
 - [ ] Apple Sign-In
