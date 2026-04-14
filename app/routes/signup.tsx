@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { AuthForm } from "~/components/auth/AuthForm";
 import { GoogleSignInButton } from "~/components/auth/GoogleSignInButton";
+import { AppleSignInButton } from "~/components/auth/AppleSignInButton";
 
 export default function Signup() {
   const { t } = useTranslation();
@@ -77,7 +78,10 @@ export default function Signup() {
         </div>
 
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-          <GoogleSignInButton label={t("auth.signup.googleButton")} />
+          <div className="space-y-2">
+            <GoogleSignInButton label={t("auth.signup.googleButton")} />
+            <AppleSignInButton />
+          </div>
 
           <div className="my-4 flex items-center">
             <div className="flex-1 border-t border-gray-300 dark:border-gray-600" />

@@ -3,6 +3,7 @@ import { useNavigate, Link, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { AuthForm } from "~/components/auth/AuthForm";
 import { GoogleSignInButton } from "~/components/auth/GoogleSignInButton";
+import { AppleSignInButton } from "~/components/auth/AppleSignInButton";
 
 export default function Login() {
   const { t } = useTranslation();
@@ -76,7 +77,10 @@ export default function Login() {
         </div>
 
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-          <GoogleSignInButton />
+          <div className="space-y-2">
+            <GoogleSignInButton />
+            <AppleSignInButton />
+          </div>
 
           <div className="my-4 flex items-center">
             <div className="flex-1 border-t border-gray-300 dark:border-gray-600" />

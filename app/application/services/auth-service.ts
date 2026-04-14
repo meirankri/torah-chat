@@ -16,6 +16,7 @@ import {
 } from "./token-service";
 import { validateSignupInput, validateEmail } from "~/lib/auth/validation";
 import type { GoogleOAuthClient } from "~/infrastructure/oauth/google-oauth-client";
+import type { AppleOAuthClient } from "~/infrastructure/oauth/apple-oauth-client";
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
@@ -33,6 +34,10 @@ export interface GoogleAuthDeps extends AuthDeps {
   googleClient: GoogleOAuthClient;
   googleClientId: string;
   googleClientSecret: string;
+}
+
+export interface AppleAuthDeps extends AuthDeps {
+  appleClient: AppleOAuthClient;
 }
 
 function createTokenExpiresAt(days: number): string {
@@ -283,6 +288,64 @@ export async function googleOAuth(
         name: googleUser.name || googleUser.email.split("@")[0] || "User",
         provider: "google",
         providerId: googleUser.id,
+        language: "fr",
+      });
+
+      user = await deps.userRepo.update(user.id, {
+        trialEndsAt: createTokenExpiresAt(FREE_TRIAL_DAYS),
+        emailVerified: true,
+      });
+    }
+  }
+
+  const tokens = await generateTokens(user.id, user.email, deps);
+  return { user, tokens };
+}
+
+export async function appleOAuth(
+  code: string,
+  redirectUri: string,
+  firstName: string | undefined,
+  lastName: string | undefined,
+  idToken: string | undefined,
+  deps: AppleAuthDeps
+): Promise<{ user: User; tokens: AuthTokens }> {
+  // Apple sends the id_token directly in form_post — prefer that over code exchange
+  let appleUser: { id: string; email: string; name: string };
+
+  if (idToken) {
+    const fullName =
+      firstName && lastName
+        ? `${firstName} ${lastName}`
+        : firstName ?? lastName ?? undefined;
+    appleUser = deps.appleClient.getUserFromIdToken(idToken, fullName);
+  } else {
+    // Fallback: exchange code for token
+    const appleTokens = await deps.appleClient.exchangeCodeForToken(code, redirectUri);
+    const fullName =
+      firstName && lastName
+        ? `${firstName} ${lastName}`
+        : firstName ?? lastName ?? undefined;
+    appleUser = deps.appleClient.getUserFromIdToken(appleTokens.id_token, fullName);
+  }
+
+  let user = await deps.userRepo.findByProvider("apple", appleUser.id);
+
+  if (!user) {
+    user = await deps.userRepo.findByEmail(appleUser.email.toLowerCase());
+
+    if (user) {
+      user = await deps.userRepo.update(user.id, {
+        provider: "apple",
+        providerId: appleUser.id,
+        emailVerified: true,
+      });
+    } else {
+      user = await deps.userRepo.create({
+        email: appleUser.email.toLowerCase(),
+        name: appleUser.name,
+        provider: "apple",
+        providerId: appleUser.id,
         language: "fr",
       });
 
