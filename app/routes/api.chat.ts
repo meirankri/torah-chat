@@ -264,9 +264,6 @@ export async function action({ request, context }: Route.ActionArgs) {
       console.log(`[Chat API] Sefaria find-refs fallback: ${sefariaResults.length} results`);
     }
 
-    if (keywords.length === 0 && refs.length === 0) {
-      sourcesError = "Impossible d'extraire des mots-clés pour la recherche de sources.";
-    }
   } catch (error) {
     console.error("[Chat API] Sources fetch error:", error);
     sourcesError = "Erreur lors de la recherche des sources.";
