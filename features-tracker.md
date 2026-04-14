@@ -57,13 +57,13 @@
 - [x] Sauvegarde préférence langue (profil si connecté, cookie sinon)
 
 ## Phase 7 — P0 Paiement Stripe
-- [ ] Création Stripe Customer à l'inscription
-- [ ] Page pricing avec les 3 plans (Free trial, Standard, Premium)
-- [ ] Stripe Checkout Sessions (redirect vers Stripe)
-- [ ] Webhooks Stripe : checkout.session.completed, subscription.updated/deleted, invoice events
-- [ ] Compteur questions/mois (incrémentation + reset mensuel)
-- [ ] Switch modèle LLM selon le plan (Llama 8B → 70B → Claude/GPT)
-- [ ] Portail client Stripe (lien "Gérer mon abonnement")
+- [x] Création Stripe Customer à l'inscription
+- [x] Page pricing avec les 3 plans (Free trial, Standard, Premium)
+- [x] Stripe Checkout Sessions (redirect vers Stripe)
+- [x] Webhooks Stripe : checkout.session.completed, subscription.updated/deleted, invoice events
+- [x] Compteur questions/mois (incrémentation + reset mensuel)
+- [x] Switch modèle LLM selon le plan (Llama 8B → 70B → Claude/GPT)
+- [x] Portail client Stripe (lien "Gérer mon abonnement")
 
 ## Phase 8 — P0 PWA
 - [ ] manifest.json (nom, icônes 192+512px, theme_color, display standalone)
