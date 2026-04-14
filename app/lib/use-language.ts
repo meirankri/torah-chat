@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   type SupportedLanguage,
   SUPPORTED_LANGUAGES,
+  LANGUAGE_COOKIE,
   isRTL,
 } from "~/i18n/config";
 
@@ -17,6 +18,8 @@ export function useLanguage() {
       i18n.changeLanguage(lang);
       document.documentElement.lang = lang;
       document.documentElement.dir = isRTL(lang) ? "rtl" : "ltr";
+      // Persist preference in cookie (read by detectLanguage() on next load)
+      document.cookie = `${LANGUAGE_COOKIE}=${lang}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
     },
     [i18n]
   );
