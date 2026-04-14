@@ -80,3 +80,7 @@
 - [x] Rate limiting (30 req/min → HTTP 429)
 - [x] Emails transactionnels Brevo (confirmation inscription, reset password, rappel trial)
 - [x] Apple Sign-In
+
+## Phase 10 — DevOps / Production
+- [x] GitHub Actions CI/CD (tests + build + deploy Cloudflare Workers sur push main)
+- [x] .env.example complet (toutes les variables, Apple Sign-In, CRON_SECRET, GEMINI_API_KEY)
