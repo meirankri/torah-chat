@@ -49,12 +49,12 @@
 - [x] Bouton "Nouvelle conversation"
 
 ## Phase 6 — P0 Multilingue (i18n)
-- [ ] Setup i18n avec fichiers JSON (fr.json, en.json, he.json)
-- [ ] Toutes les chaînes UI dans les fichiers de traduction
-- [ ] Support RTL complet pour l'hébreu (layout mirroré, dir="rtl")
-- [ ] Sélecteur de langue dans le header
-- [ ] Détection langue navigateur (fallback anglais)
-- [ ] Sauvegarde préférence langue (profil si connecté, cookie sinon)
+- [x] Setup i18n avec fichiers JSON (fr.json, en.json, he.json)
+- [x] Toutes les chaînes UI dans les fichiers de traduction
+- [x] Support RTL complet pour l'hébreu (layout mirroré, dir="rtl")
+- [x] Sélecteur de langue dans le header
+- [x] Détection langue navigateur (fallback anglais)
+- [x] Sauvegarde préférence langue (profil si connecté, cookie sinon)
 
 ## Phase 7 — P0 Paiement Stripe
 - [ ] Création Stripe Customer à l'inscription
