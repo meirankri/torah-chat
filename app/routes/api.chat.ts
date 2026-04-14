@@ -95,7 +95,10 @@ export async function action({ request, context }: Route.ActionArgs) {
   }
 
   const baseUrl = (env as Record<string, string>).SEFARIA_BASE_URL || "https://www.sefaria.org";
-  const cacheTtl = parseInt((env as Record<string, string>).SEFARIA_CACHE_TTL_SECONDS || "86400", 10);
+  const cacheTtl = parseInt(
+    (env as Record<string, string>).SEFARIA_CACHE_TTL_SECONDS || "86400",
+    10
+  );
   const gemini = new GeminiClient(geminiApiKey);
   const sefaria = new SefariaClient(baseUrl, env.CACHE, cacheTtl);
 
@@ -120,32 +123,52 @@ export async function action({ request, context }: Route.ActionArgs) {
   }
 
   // Use DB history if available, otherwise use client-sent history
-  const contextHistory = dbHistory.length > 0
-    ? dbHistory
-    : history.map((m) => ({ role: m.role, content: m.content }));
+  const contextHistory =
+    dbHistory.length > 0 ? dbHistory : history.map((m) => ({ role: m.role, content: m.content }));
 
-  // Step 1: Gemini extracts search keywords from the question
+  // Step 1: Gemini extracts search keywords + book refs from the question
   let sefariaResults: SefariaSourceResult[] = [];
   let sourcesError: string | undefined;
+  const emptyExtraction = { queries: [] as string[], refs: [] as string[] };
   try {
-    console.log(`[Chat API] Step 1: Extracting keywords for "${content.trim().slice(0, 80)}..."`);
-    const keywords = await Promise.race([
+    console.log(
+      `[Chat API] Step 1: Extracting keywords + refs for "${content.trim().slice(0, 80)}..."`
+    );
+    const extraction = await Promise.race([
       gemini.extractSearchQueries(content.trim()),
-      new Promise<string[]>((resolve) =>
+      new Promise<typeof emptyExtraction>((resolve) =>
         setTimeout(() => {
-          console.warn("[Chat API] Gemini keyword extraction timed out");
-          resolve([]);
+          console.warn("[Chat API] Gemini extraction timed out");
+          resolve(emptyExtraction);
         }, GEMINI_EXTRACT_TIMEOUT_MS)
       ),
     ]);
 
-    console.log(`[Chat API] Keywords extracted: ${keywords.length > 0 ? keywords.join(", ") : "(none)"}`);
+    const { queries: keywords, refs } = extraction;
+    console.log(`[Chat API] Extracted: ${keywords.length} keyword groups, ${refs.length} refs`);
 
-    if (keywords.length > 0) {
-      // Step 2: Search Sefaria with the keywords and fetch matching texts
-      console.log("[Chat API] Step 2: Searching Sefaria by keywords...");
-      const searchResults = await Promise.race([
-        sefaria.searchByKeywords(keywords, "french", MAX_SEFARIA_SOURCES),
+    // Step 2a: Search by direct refs (book/treatise names)
+    if (refs.length > 0) {
+      console.log("[Chat API] Step 2a: Searching Sefaria by refs...", refs);
+      const refResults = await Promise.race([
+        sefaria.searchByRefs(refs, keywords, "french", MAX_SEFARIA_SOURCES),
+        new Promise<SefariaSourceResult[]>((resolve) =>
+          setTimeout(() => {
+            console.warn("[Chat API] Sefaria ref search timed out");
+            resolve([]);
+          }, SEFARIA_TIMEOUT_MS)
+        ),
+      ]);
+      sefariaResults = refResults;
+      console.log(`[Chat API] Sefaria ref search: ${sefariaResults.length} results`);
+    }
+
+    // Step 2b: Search by keywords (full-text), fill remaining slots
+    const remainingSlots = MAX_SEFARIA_SOURCES - sefariaResults.length;
+    if (keywords.length > 0 && remainingSlots > 0) {
+      console.log("[Chat API] Step 2b: Searching Sefaria by keywords...");
+      const keywordResults = await Promise.race([
+        sefaria.searchByKeywords(keywords, "french", remainingSlots),
         new Promise<SefariaSourceResult[]>((resolve) =>
           setTimeout(() => {
             console.warn("[Chat API] Sefaria keyword search timed out");
@@ -154,25 +177,34 @@ export async function action({ request, context }: Route.ActionArgs) {
         ),
       ]);
 
-      sefariaResults = searchResults;
-      console.log(`[Chat API] Sefaria keyword search: ${sefariaResults.length} results`);
-
-      // Step 2b: Fallback to find-refs if keyword search returned nothing
-      if (sefariaResults.length === 0) {
-        console.log("[Chat API] Step 2b: Fallback — trying Sefaria find-refs (Linker API)...");
-        const fallbackResults = await Promise.race([
-          sefaria.getSourcesForText(content.trim(), "french", MAX_SEFARIA_SOURCES),
-          new Promise<SefariaSourceResult[]>((resolve) =>
-            setTimeout(() => {
-              console.warn("[Chat API] Sefaria find-refs fallback timed out");
-              resolve([]);
-            }, SEFARIA_TIMEOUT_MS)
-          ),
-        ]);
-        sefariaResults = fallbackResults;
-        console.log(`[Chat API] Sefaria find-refs fallback: ${sefariaResults.length} results`);
+      // Merge, avoiding duplicate refs
+      const existingRefs = new Set(sefariaResults.map((s) => s.ref));
+      for (const result of keywordResults) {
+        if (!existingRefs.has(result.ref)) {
+          sefariaResults.push(result);
+          existingRefs.add(result.ref);
+        }
       }
-    } else {
+      console.log(`[Chat API] After keyword search: ${sefariaResults.length} total results`);
+    }
+
+    // Step 2c: Fallback to find-refs if nothing found
+    if (sefariaResults.length === 0) {
+      console.log("[Chat API] Step 2c: Fallback — trying Sefaria find-refs (Linker API)...");
+      const fallbackResults = await Promise.race([
+        sefaria.getSourcesForText(content.trim(), "french", MAX_SEFARIA_SOURCES),
+        new Promise<SefariaSourceResult[]>((resolve) =>
+          setTimeout(() => {
+            console.warn("[Chat API] Sefaria find-refs fallback timed out");
+            resolve([]);
+          }, SEFARIA_TIMEOUT_MS)
+        ),
+      ]);
+      sefariaResults = fallbackResults;
+      console.log(`[Chat API] Sefaria find-refs fallback: ${sefariaResults.length} results`);
+    }
+
+    if (keywords.length === 0 && refs.length === 0) {
       sourcesError = "Impossible d'extraire des mots-clés pour la recherche de sources.";
     }
   } catch (error) {
@@ -191,9 +223,8 @@ export async function action({ request, context }: Route.ActionArgs) {
   const recentHistory = contextHistory.slice(-MAX_HISTORY_MESSAGES);
   const geminiHistory = chatHistoryToGemini(recentHistory);
 
-  const sourcesForFrontend = sefariaResults.length > 0
-    ? mapSefariaResultsToSources(sefariaResults, "pending")
-    : [];
+  const sourcesForFrontend =
+    sefariaResults.length > 0 ? mapSefariaResultsToSources(sefariaResults, "pending") : [];
 
   try {
     const responseText = await gemini.chat(systemPrompt, geminiHistory, content.trim());
@@ -237,9 +268,12 @@ export async function action({ request, context }: Route.ActionArgs) {
     return Response.json(payload);
   } catch (error) {
     console.error("Chat API error:", error);
+    const isOverloaded = error instanceof Error && error.message === "GEMINI_OVERLOADED";
     return chatErrorResponse(
       "API_DOWN",
-      "The AI service is temporarily unavailable. Please try again later.",
+      isOverloaded
+        ? "Le service IA gratuit est actuellement surchargé (trop de requêtes). Veuillez réessayer dans quelques minutes ou prendre un abonnement payant."
+        : "The AI service is temporarily unavailable. Please try again later.",
       503
     );
   }

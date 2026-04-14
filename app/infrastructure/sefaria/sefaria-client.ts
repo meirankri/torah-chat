@@ -58,6 +58,121 @@ export class SefariaClient {
     private readonly cacheTtlSeconds: number
   ) {}
 
+  /**
+   * Resolve a book/ref name via Sefaria's name API, returning the most specific valid completions.
+   */
+  async resolveRef(refName: string): Promise<string[]> {
+    const url = `${this.baseUrl}/api/name/${encodeURIComponent(refName)}`;
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.log(`[Sefaria] resolveRef: "${refName}" not found (${response.status})`);
+        return [];
+      }
+
+      const data = (await response.json()) as {
+        is_ref?: boolean;
+        completions?: string[];
+      };
+
+      if (!data.is_ref || !data.completions || data.completions.length === 0) {
+        console.log(`[Sefaria] resolveRef: "${refName}" is not a valid ref`);
+        return [];
+      }
+
+      console.log(`[Sefaria] resolveRef: "${refName}" → ${data.completions.length} completions`);
+      return data.completions;
+    } catch (error) {
+      console.error(`[Sefaria] resolveRef error for "${refName}":`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Search within specific books by combining keywords with a path filter.
+   * First resolves book names to valid Sefaria paths, then searches full-text within those books.
+   */
+  async searchByRefs(
+    refNames: string[],
+    keywords: string[],
+    translationLang: string = "english",
+    maxSources: number = 5
+  ): Promise<SefariaSourceResult[]> {
+    const allHits: SefariaSearchHit[] = [];
+
+    for (const refName of refNames) {
+      // First verify the ref exists on Sefaria
+      const completions = await this.resolveRef(refName);
+      if (completions.length === 0) continue;
+
+      // Extract the book name (first completion or the ref itself)
+      const bookName = completions[0] ?? refName;
+
+      // Search full-text within this book using path wildcard filter
+      const query = keywords.length > 0 ? keywords.join(" ") : refName;
+      const searchUrl = `${this.baseUrl}/api/search/text/_search`;
+      console.log(`[Sefaria] searchByRefs: searching "${query}" within book "${bookName}"`);
+
+      try {
+        const response = await fetch(searchUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: {
+              bool: {
+                must: [{
+                  multi_match: {
+                    query,
+                    fields: ["naive_lemmatizer", "exact"],
+                    type: "best_fields",
+                  },
+                }],
+                filter: [{
+                  wildcard: { path: `*${bookName.split(",")[0]}*` },
+                }],
+              },
+            },
+            size: maxSources,
+            _source: ["ref", "heRef", "categories"],
+          }),
+        });
+
+        if (!response.ok) {
+          console.error(`[Sefaria] searchByRefs: search failed for "${bookName}": ${response.status}`);
+          continue;
+        }
+
+        const data = (await response.json()) as {
+          hits?: { hits?: SefariaSearchHit[] };
+        };
+
+        const hits = data.hits?.hits ?? [];
+        console.log(`[Sefaria] searchByRefs: ${hits.length} hits in "${bookName}"`);
+        allHits.push(...hits);
+      } catch (error) {
+        console.error(`[Sefaria] searchByRefs error for "${bookName}":`, error);
+      }
+    }
+
+    if (allHits.length === 0) return [];
+
+    // Deduplicate by ref
+    const uniqueRefs = [...new Set(allHits.map((h) => h._source.ref))];
+    console.log(`[Sefaria] searchByRefs: fetching texts for ${uniqueRefs.length} unique refs`);
+
+    const results = await Promise.allSettled(
+      uniqueRefs.slice(0, maxSources).map((ref) => this.getText(ref, translationLang))
+    );
+
+    return results
+      .filter(
+        (r): r is PromiseFulfilledResult<SefariaSourceResult | null> =>
+          r.status === "fulfilled"
+      )
+      .map((r) => r.value)
+      .filter((r): r is SefariaSourceResult => r !== null);
+  }
+
   async findRefs(text: string): Promise<string[]> {
     const url = `${this.baseUrl}/api/find-refs`;
     try {

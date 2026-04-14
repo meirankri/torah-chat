@@ -15,23 +15,32 @@ interface GeminiCandidate {
   finishReason: string;
 }
 
-interface GeminiSearchQuery {
+interface GeminiSearchResult {
   queries: string[];
+  refs: string[];
 }
 
 const SEARCH_QUERY_SYSTEM = `Tu es un expert en textes juifs. L'utilisateur pose une question sur la Torah, le Talmud, la Halakha, la Kabbale, etc.
 
-Ta tâche : générer des MOTS-CLÉS DE RECHERCHE en anglais pour trouver des textes pertinents dans la base Sefaria.
+Ta tâche : générer des MOTS-CLÉS DE RECHERCHE et des RÉFÉRENCES DE LIVRES pour trouver des textes pertinents dans la base Sefaria.
 
 Retourne UNIQUEMENT un JSON valide au format :
-{"queries": ["reincarnation soul gilgul", "transmigration neshama"]}
+{"queries": ["reincarnation soul gilgul", "transmigration neshama"], "refs": ["HaEmunot veHaDeot", "Sha'ar HaGilgulim"]}
 
-Règles :
+Règles pour "queries" (mots-clés full-text) :
 - Les mots-clés doivent être en ANGLAIS (c'est la langue d'indexation de Sefaria)
 - Utilise des termes hébraïques translittérés quand c'est pertinent (gilgul, teshuva, neshama, etc.)
 - Maximum 3 groupes de mots-clés
 - Chaque groupe = 2-4 mots-clés liés
-- Si tu ne trouves rien de pertinent, retourne {"queries": []}
+
+Règles pour "refs" (noms de livres/traités) :
+- Noms de livres ou traités en ANGLAIS ou translittération hébraïque tels qu'ils apparaissent sur Sefaria
+- Exemples : "Shabbat", "Berakhot", "Mishneh Torah", "Zohar", "HaEmunot veHaDeot", "Sefer HaChinukh", "Sha'ar HaGilgulim", "Moreh Nevukhim", "Kuzari"
+- Si tu connais un chapitre/section précis, ajoute-le : "HaEmunot veHaDeot, [Treatise VI] The Soul and Death"
+- Maximum 3 références
+- Si aucune référence précise n'est pertinente, retourne "refs": []
+
+- Si tu ne trouves rien de pertinent, retourne {"queries": [], "refs": []}
 - AUCUN texte explicatif, UNIQUEMENT le JSON`;
 
 export class GeminiClient {
@@ -39,7 +48,8 @@ export class GeminiClient {
 
   constructor(private readonly apiKey: string) {}
 
-  async extractSearchQueries(userQuestion: string): Promise<string[]> {
+  async extractSearchQueries(userQuestion: string): Promise<GeminiSearchResult> {
+    const empty: GeminiSearchResult = { queries: [], refs: [] };
     const url = `${this.baseUrl}/models/gemini-3.1-flash-lite-preview:generateContent?key=${this.apiKey}`;
 
     const response = await fetch(url, {
@@ -62,7 +72,7 @@ export class GeminiClient {
     if (!response.ok) {
       const errorBody = await response.text().catch(() => "unknown");
       console.error(`[Gemini] extractSearchQueries failed: status=${response.status}, body=${errorBody}`);
-      return [];
+      return empty;
     }
 
     const data = (await response.json()) as {
@@ -74,14 +84,17 @@ export class GeminiClient {
     try {
       // Extract JSON from the response (handle markdown code blocks)
       const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) return [];
-      const parsed = JSON.parse(jsonMatch[0]) as GeminiSearchQuery;
-      const queries = parsed.queries ?? [];
-      console.log(`[Gemini] extractSearchQueries: ${queries.length} keyword groups extracted:`, queries);
-      return queries;
+      if (!jsonMatch) return empty;
+      const parsed = JSON.parse(jsonMatch[0]) as GeminiSearchResult;
+      const result: GeminiSearchResult = {
+        queries: parsed.queries ?? [],
+        refs: parsed.refs ?? [],
+      };
+      console.log(`[Gemini] extractSearchQueries: ${result.queries.length} keyword groups, ${result.refs.length} refs:`, result);
+      return result;
     } catch {
       console.error("[Gemini] extractSearchQueries: failed to parse JSON from response:", text);
-      return [];
+      return empty;
     }
   }
 
@@ -119,6 +132,9 @@ export class GeminiClient {
     if (!response.ok) {
       const errorText = await response.text().catch(() => "unknown error");
       console.error(`[GeminiClient.chat] Gemini failed: ${response.status}`, errorText);
+      if (response.status === 503 || response.status === 429) {
+        throw new Error("GEMINI_OVERLOADED");
+      }
       throw new Error(`Gemini API error: ${response.status}`);
     }
 
