@@ -7,29 +7,46 @@ interface ChatApiResponse {
   response: string;
   sources: MessageSource[];
   sourcesError?: string;
+  conversationId?: string;
+}
+
+interface UseChatOptions {
+  conversationId?: string | null;
+  onConversationCreated?: (conversationId: string) => void;
+  onFirstExchange?: (conversationId: string) => void;
 }
 
 interface UseChatReturn {
   messages: ChatMessage[];
   isLoading: boolean;
   error: ChatError | null;
+  conversationId: string | null;
   sendMessage: (content: string) => Promise<void>;
   clearError: () => void;
   clearMessages: () => void;
+  setMessages: (messages: ChatMessage[]) => void;
 }
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-export function useChat(): UseChatReturn {
+export function useChat(options: UseChatOptions = {}): UseChatReturn {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<ChatError | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(
+    options.conversationId ?? null
+  );
   const abortControllerRef = useRef<AbortController | null>(null);
+  const exchangeCountRef = useRef(0);
 
   const clearError = useCallback(() => setError(null), []);
-  const clearMessages = useCallback(() => setMessages([]), []);
+  const clearMessages = useCallback(() => {
+    setMessages([]);
+    setConversationId(null);
+    exchangeCountRef.current = 0;
+  }, []);
 
   const sendMessage = useCallback(async (content: string) => {
     const trimmed = content.trim();
@@ -74,6 +91,7 @@ export function useChat(): UseChatReturn {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content: trimmed,
+          conversationId,
           history: messages,
         }),
         signal: abortController.signal,
@@ -91,6 +109,12 @@ export function useChat(): UseChatReturn {
       }
 
       const data = await response.json() as ChatApiResponse;
+
+      // Track conversation ID from backend
+      if (data.conversationId && !conversationId) {
+        setConversationId(data.conversationId);
+        options.onConversationCreated?.(data.conversationId);
+      }
 
       const sources: MessageSource[] = (data.sources ?? []).map((s) => ({
         ...s,
@@ -110,6 +134,15 @@ export function useChat(): UseChatReturn {
             : m
         )
       );
+
+      // Trigger title generation after first exchange
+      exchangeCountRef.current += 1;
+      if (exchangeCountRef.current === 1) {
+        const cid = data.conversationId ?? conversationId;
+        if (cid) {
+          options.onFirstExchange?.(cid);
+        }
+      }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
         return;
@@ -123,7 +156,16 @@ export function useChat(): UseChatReturn {
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [messages]);
+  }, [messages, conversationId, options]);
 
-  return { messages, isLoading, error, sendMessage, clearError, clearMessages };
+  return {
+    messages,
+    isLoading,
+    error,
+    conversationId,
+    sendMessage,
+    clearError,
+    clearMessages,
+    setMessages,
+  };
 }

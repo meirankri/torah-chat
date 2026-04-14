@@ -7,6 +7,7 @@ import type { SefariaSourceResult } from "~/infrastructure/sefaria/sefaria-clien
 import { GeminiClient, chatHistoryToGemini } from "~/infrastructure/gemini/gemini-client";
 import { mapSefariaResultsToSources } from "~/application/services/source-service";
 import { requireAuth } from "~/lib/auth/middleware";
+import { D1ConversationRepository } from "~/infrastructure/repositories/d1-conversation-repository";
 
 const MAX_HISTORY_MESSAGES = 10;
 const MAX_SEFARIA_SOURCES = 5;
@@ -52,24 +53,27 @@ export async function action({ request, context }: Route.ActionArgs) {
     return chatErrorResponse("UNKNOWN", "Method not allowed", 405);
   }
 
-  // Protect API: require auth if JWT_SECRET is configured
-  const jwtSecret = (context.cloudflare.env as Record<string, string>).JWT_SECRET;
+  const env = context.cloudflare.env;
+  const jwtSecret = (env as Record<string, string>).JWT_SECRET;
+
+  let userId: string | null = null;
   if (jwtSecret) {
     try {
-      await requireAuth(request, jwtSecret);
+      const auth = await requireAuth(request, jwtSecret);
+      userId = auth.userId;
     } catch {
       return chatErrorResponse("UNKNOWN", "Authentication required", 401);
     }
   }
 
-  let body: { content: string; history?: ChatMessage[] };
+  let body: { content: string; history?: ChatMessage[]; conversationId?: string };
   try {
     body = await request.json();
   } catch {
     return chatErrorResponse("UNKNOWN", "Invalid request body", 400);
   }
 
-  const { content, history = [] } = body;
+  const { content, history = [], conversationId } = body;
 
   if (!content || typeof content !== "string" || content.trim().length === 0) {
     return chatErrorResponse("UNKNOWN", "Message content is required", 400);
@@ -83,18 +87,42 @@ export async function action({ request, context }: Route.ActionArgs) {
     );
   }
 
-  const env = context.cloudflare.env;
-  const geminiApiKey = env.GEMINI_API_KEY;
+  const geminiApiKey = (env as Record<string, string>).GEMINI_API_KEY;
 
   if (!geminiApiKey) {
     console.error("GEMINI_API_KEY is not configured");
     return chatErrorResponse("API_DOWN", "AI service not configured.", 503);
   }
 
-  const baseUrl = env.SEFARIA_BASE_URL || "https://www.sefaria.org";
-  const cacheTtl = parseInt(env.SEFARIA_CACHE_TTL_SECONDS || "86400", 10);
+  const baseUrl = (env as Record<string, string>).SEFARIA_BASE_URL || "https://www.sefaria.org";
+  const cacheTtl = parseInt((env as Record<string, string>).SEFARIA_CACHE_TTL_SECONDS || "86400", 10);
   const gemini = new GeminiClient(geminiApiKey);
   const sefaria = new SefariaClient(baseUrl, env.CACHE, cacheTtl);
+
+  // Load conversation context from DB if available
+  const repo = env.DB ? new D1ConversationRepository(env.DB) : null;
+  let dbConversationId = conversationId;
+  let dbHistory: { role: "user" | "assistant"; content: string }[] = [];
+
+  if (repo && userId) {
+    if (!dbConversationId) {
+      const conversation = await repo.create(userId);
+      dbConversationId = conversation.id;
+    } else {
+      const conversation = await repo.findById(dbConversationId);
+      if (!conversation || conversation.userId !== userId) {
+        return chatErrorResponse("UNKNOWN", "Conversation not found", 404);
+      }
+    }
+
+    const dbMessages = await repo.getMessages(dbConversationId);
+    dbHistory = dbMessages.map((m) => ({ role: m.role, content: m.content }));
+  }
+
+  // Use DB history if available, otherwise use client-sent history
+  const contextHistory = dbHistory.length > 0
+    ? dbHistory
+    : history.map((m) => ({ role: m.role, content: m.content }));
 
   // Step 1: Gemini extracts search keywords from the question
   let sefariaResults: SefariaSourceResult[] = [];
@@ -156,14 +184,12 @@ export async function action({ request, context }: Route.ActionArgs) {
     sourcesError = "Aucune source trouvée pour cette question.";
   }
 
-  // Step 3: Build system prompt with source context and stream Gemini response
+  // Step 3: Build system prompt with source context
   const sourceContext = buildSourceContext(sefariaResults);
   const systemPrompt = SYSTEM_PROMPT_BASE + sourceContext;
 
-  const recentHistory = history.slice(-MAX_HISTORY_MESSAGES);
-  const geminiHistory = chatHistoryToGemini(
-    recentHistory.map((m) => ({ role: m.role, content: m.content }))
-  );
+  const recentHistory = contextHistory.slice(-MAX_HISTORY_MESSAGES);
+  const geminiHistory = chatHistoryToGemini(recentHistory);
 
   const sourcesForFrontend = sefariaResults.length > 0
     ? mapSefariaResultsToSources(sefariaResults, "pending")
@@ -172,13 +198,40 @@ export async function action({ request, context }: Route.ActionArgs) {
   try {
     const responseText = await gemini.chat(systemPrompt, geminiHistory, content.trim());
 
-    const payload: { response: string; sources: typeof sourcesForFrontend; sourcesError?: string } = {
+    // Save messages to DB if we have a conversation
+    if (repo && dbConversationId) {
+      try {
+        await repo.addMessage(dbConversationId, "user", content.trim());
+        const assistantMsg = await repo.addMessage(dbConversationId, "assistant", responseText);
+
+        if (sourcesForFrontend.length > 0) {
+          const sourcesWithMessageId = sourcesForFrontend.map((s) => ({
+            ...s,
+            messageId: assistantMsg.id,
+          }));
+          await repo.addSources(sourcesWithMessageId);
+        }
+      } catch (dbError) {
+        console.error("[Chat API] DB save error (non-blocking):", dbError);
+      }
+    }
+
+    const payload: {
+      response: string;
+      sources: typeof sourcesForFrontend;
+      sourcesError?: string;
+      conversationId?: string;
+    } = {
       response: responseText,
       sources: sourcesForFrontend,
     };
 
     if (sourcesError) {
       payload.sourcesError = sourcesError;
+    }
+
+    if (dbConversationId) {
+      payload.conversationId = dbConversationId;
     }
 
     return Response.json(payload);

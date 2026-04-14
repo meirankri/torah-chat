@@ -19,4 +19,7 @@ export default [
   route("api/auth/google", "routes/api.auth.google.ts"),
   route("api/auth/google/callback", "routes/api.auth.google.callback.ts"),
   route("api/profile", "routes/api.profile.ts"),
+  route("api/conversations", "routes/api.conversations.ts"),
+  route("api/conversations/:id", "routes/api.conversations.$id.ts"),
+  route("api/conversations/:id/title", "routes/api.conversations.$id.title.ts"),
 ] satisfies RouteConfig;

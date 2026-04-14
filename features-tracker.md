@@ -41,12 +41,12 @@
 - [x] Page profil utilisateur (lecture : email, nom, langue, plan, questions restantes)
 
 ## Phase 5 — P0 Gestion des Conversations
-- [ ] CRUD conversations (créer, lister, lire, supprimer)
-- [ ] Sidebar liste conversations (triée par date, titre + date relative)
-- [ ] Titre auto-généré par LLM après le 1er échange
-- [ ] Renommer une conversation (édition inline)
-- [ ] Contexte conversationnel (N derniers messages envoyés au LLM, configurable)
-- [ ] Bouton "Nouvelle conversation"
+- [x] CRUD conversations (créer, lister, lire, supprimer)
+- [x] Sidebar liste conversations (triée par date, titre + date relative)
+- [x] Titre auto-généré par LLM après le 1er échange
+- [x] Renommer une conversation (édition inline)
+- [x] Contexte conversationnel (N derniers messages envoyés au LLM, configurable)
+- [x] Bouton "Nouvelle conversation"
 
 ## Phase 6 — P0 Multilingue (i18n)
 - [ ] Setup i18n avec fichiers JSON (fr.json, en.json, he.json)
