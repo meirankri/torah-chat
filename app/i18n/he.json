@@ -13,7 +13,8 @@
   },
   "nav": {
     "profile": "הפרופיל שלי",
-    "chat": "חזרה לצ'אט"
+    "chat": "חזרה לצ'אט",
+    "pricing": "תמחור"
   },
   "errors": {
     "serverConnection": "שגיאת חיבור לשרת",
@@ -27,7 +28,8 @@
     "emptyState": "שאל שאלה על התורה, התלמוד, ההלכה...",
     "inputPlaceholder": "שאל שאלה על התורה...",
     "searchingSources": "מחפש מקורות...",
-    "openMenu": "פתח תפריט"
+    "openMenu": "פתח תפריט",
+    "upgradePrompt": "שדרג לתוכנית בתשלום כדי להמשיך"
   },
   "sidebar": {
     "conversations": "שיחות",
@@ -111,7 +113,9 @@
       "email": "אימייל"
     },
     "logout": "התנתקות",
-    "loggingOut": "..."
+    "loggingOut": "...",
+    "manageSubscription": "ניהול המנוי",
+    "upgradePlan": "שנה תוכנית"
   },
   "sources": {
     "viewOnSefaria": "צפה ב-Sefaria",
@@ -123,5 +127,52 @@
     "fr": "Français",
     "en": "English",
     "he": "עברית"
+  },
+  "pricing": {
+    "title": "תוכניות ומחירים",
+    "subtitle": "גישה לחוכמה יהודית ללא הגבלה",
+    "free": "חינם",
+    "perMonth": "/חודש",
+    "recommended": "מומלץ",
+    "subscribe": "הירשם",
+    "startTrial": "התחל ניסיון חינם",
+    "currentPlan": "תוכנית נוכחית",
+    "paymentSuccess": "תשלום בוצע בהצלחה! התוכנית שלך עודכנה.",
+    "paymentCancelled": "התשלום בוטל.",
+    "plans": {
+      "trial": {
+        "name": "ניסיון חינם",
+        "description": "גלה את Torah Chat למשך 7 ימים",
+        "features": [
+          "7 ימי ניסיון",
+          "50 שאלות",
+          "מקורות Sefaria",
+          "3 שפות (FR/EN/HE)"
+        ]
+      },
+      "standard": {
+        "name": "רגיל",
+        "description": "לסטודנטים ואוהבי תורה",
+        "features": [
+          "500 שאלות לחודש",
+          "מודל AI משופר",
+          "מקורות Sefaria מלאים",
+          "היסטוריה ללא הגבלה",
+          "תמיכה מועדפת"
+        ]
+      },
+      "premium": {
+        "name": "פרמיום",
+        "description": "לחוקרים ואנשי מקצוע",
+        "features": [
+          "2000 שאלות לחודש",
+          "מודל AI החזק ביותר",
+          "מקורות Sefaria מלאים",
+          "היסטוריה ללא הגבלה",
+          "תמיכה ייעודית",
+          "גישה לתכונות beta"
+        ]
+      }
+    }
   }
 }

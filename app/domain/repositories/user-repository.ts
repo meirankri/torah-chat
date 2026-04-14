@@ -8,4 +8,5 @@ export interface UserRepository {
   update(id: string, data: Partial<User>): Promise<User>;
   incrementQuestions(id: string): Promise<void>;
   resetMonthlyQuestions(id: string): Promise<void>;
+  findByStripeCustomerId(customerId: string): Promise<User | null>;
 }

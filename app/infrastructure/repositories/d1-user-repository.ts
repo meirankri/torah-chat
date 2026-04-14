@@ -185,4 +185,12 @@ export class D1UserRepository implements UserRepository {
       .bind(now, now, id)
       .run();
   }
+
+  async findByStripeCustomerId(customerId: string): Promise<User | null> {
+    const row = await this.db
+      .prepare("SELECT * FROM users WHERE stripe_customer_id = ?")
+      .bind(customerId)
+      .first<D1UserRow>();
+    return row ? rowToUser(row) : null;
+  }
 }

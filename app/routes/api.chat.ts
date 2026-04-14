@@ -8,6 +8,8 @@ import { GeminiClient, chatHistoryToGemini } from "~/infrastructure/gemini/gemin
 import { mapSefariaResultsToSources } from "~/application/services/source-service";
 import { requireAuth } from "~/lib/auth/middleware";
 import { D1ConversationRepository } from "~/infrastructure/repositories/d1-conversation-repository";
+import { D1UserRepository } from "~/infrastructure/repositories/d1-user-repository";
+import { checkAndIncrementQuota, getModelForPlan } from "~/application/services/quota-service";
 
 const MAX_HISTORY_MESSAGES = 10;
 const MAX_SEFARIA_SOURCES = 5;
@@ -87,12 +89,51 @@ export async function action({ request, context }: Route.ActionArgs) {
     );
   }
 
+  // Quota check: enforce per-plan limits and model selection
+  if (userId && env.DB) {
+    const userRepo = new D1UserRepository(env.DB);
+    const user = await userRepo.findById(userId);
+
+    if (user) {
+      const standardLimit = parseInt(
+        (env as Record<string, string>).PLAN_STANDARD_QUESTIONS_LIMIT || "500",
+        10
+      );
+      const quotaResult = await checkAndIncrementQuota(user, userRepo, {
+        standardLimit,
+        premiumLimit: 2000,
+      });
+
+      if (!quotaResult.allowed) {
+        const errorMessages: Record<string, string> = {
+          quota_exceeded: `Vous avez atteint votre limite de ${quotaResult.questionsLimit} questions ce mois. Passez à un plan supérieur pour continuer.`,
+          plan_expired: "Votre plan a expiré. Veuillez vous abonner pour continuer.",
+          trial_expired: "Votre période d'essai a expiré. Veuillez vous abonner pour continuer.",
+        };
+        return chatErrorResponse(
+          "QUOTA_EXCEEDED",
+          errorMessages[quotaResult.reason ?? "quota_exceeded"] ?? "Quota dépassé.",
+          429
+        );
+      }
+    }
+  }
+
   const geminiApiKey = (env as Record<string, string>).GEMINI_API_KEY;
 
   if (!geminiApiKey) {
     console.error("GEMINI_API_KEY is not configured");
     return chatErrorResponse("API_DOWN", "AI service not configured.", 503);
   }
+
+  // Determine model based on user plan (switch LLM by plan)
+  let userPlanForModel: import("~/domain/entities/user").UserPlan = "free_trial";
+  if (userId && env.DB) {
+    const userForModel = await new D1UserRepository(env.DB).findById(userId);
+    if (userForModel) userPlanForModel = userForModel.plan;
+  }
+  // Log selected model for monitoring purposes (used when Workers AI replaces Gemini)
+  void getModelForPlan(userPlanForModel, env as Record<string, string>);
 
   const baseUrl = (env as Record<string, string>).SEFARIA_BASE_URL || "https://www.sefaria.org";
   const cacheTtl = parseInt(

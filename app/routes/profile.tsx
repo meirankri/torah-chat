@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { requireAuth } from "~/lib/auth/middleware";
 import { D1UserRepository } from "~/infrastructure/repositories/d1-user-repository";
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 
 interface ProfileData {
   id: string;
@@ -51,7 +52,30 @@ export default function Profile() {
   const { t, i18n } = useTranslation();
   const { user } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [portalError, setPortalError] = useState<string | null>(null);
+
+  const paymentStatus = searchParams.get("payment");
+
+  const handleManageSubscription = async () => {
+    setPortalError(null);
+    setPortalLoading(true);
+    try {
+      const response = await fetch("/api/stripe/portal", { method: "POST" });
+      const data = await response.json() as { url?: string; error?: string };
+      if (!response.ok || !data.url) {
+        setPortalError(data.error ?? t("errors.serverConnection"));
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      setPortalError(t("errors.serverConnection"));
+    } finally {
+      setPortalLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -79,6 +103,18 @@ export default function Profile() {
             {t("profile.title")}
           </h1>
         </div>
+
+        {paymentStatus === "success" && (
+          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200">
+            {t("pricing.paymentSuccess")}
+          </div>
+        )}
+
+        {portalError && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+            {portalError}
+          </div>
+        )}
 
         <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900">
           <dl className="space-y-4">
@@ -126,20 +162,40 @@ export default function Profile() {
             </div>
           </dl>
 
-          <div className="mt-6 flex gap-3">
-            <Link
-              to="/chat"
-              className="flex-1 rounded-md bg-blue-600 px-4 py-2 text-center font-medium text-white hover:bg-blue-700"
-            >
-              {t("nav.chat")}
-            </Link>
-            <button
-              onClick={handleLogout}
-              disabled={loggingOut}
-              className="flex-1 rounded-md border border-gray-300 bg-white px-4 py-2 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-            >
-              {loggingOut ? t("profile.loggingOut") : t("profile.logout")}
-            </button>
+          <div className="mt-6 flex flex-col gap-3">
+            <div className="flex gap-3">
+              <Link
+                to="/chat"
+                className="flex-1 rounded-md bg-blue-600 px-4 py-2 text-center font-medium text-white hover:bg-blue-700"
+              >
+                {t("nav.chat")}
+              </Link>
+              <button
+                onClick={handleLogout}
+                disabled={loggingOut}
+                className="flex-1 rounded-md border border-gray-300 bg-white px-4 py-2 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+              >
+                {loggingOut ? t("profile.loggingOut") : t("profile.logout")}
+              </button>
+            </div>
+
+            {/* Stripe subscription management */}
+            {user.stripeCustomerId ? (
+              <button
+                onClick={handleManageSubscription}
+                disabled={portalLoading}
+                className="w-full rounded-md border border-blue-300 bg-white px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50 dark:border-blue-700 dark:bg-gray-800 dark:text-blue-400 dark:hover:bg-gray-700"
+              >
+                {portalLoading ? t("common.loading") : t("profile.manageSubscription")}
+              </button>
+            ) : (
+              <Link
+                to="/pricing"
+                className="block w-full rounded-md border border-blue-300 bg-white px-4 py-2 text-center text-sm font-medium text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:bg-gray-800 dark:text-blue-400 dark:hover:bg-gray-700"
+              >
+                {t("profile.upgradePlan")}
+              </Link>
+            )}
           </div>
         </div>
       </div>

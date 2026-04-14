@@ -13,7 +13,8 @@
   },
   "nav": {
     "profile": "My profile",
-    "chat": "Back to chat"
+    "chat": "Back to chat",
+    "pricing": "Pricing"
   },
   "errors": {
     "serverConnection": "Server connection error",
@@ -27,7 +28,8 @@
     "emptyState": "Ask your question about the Torah, Talmud, Halakha...",
     "inputPlaceholder": "Ask your question about the Torah...",
     "searchingSources": "Searching sources...",
-    "openMenu": "Open menu"
+    "openMenu": "Open menu",
+    "upgradePrompt": "Upgrade to a paid plan to continue"
   },
   "sidebar": {
     "conversations": "Conversations",
@@ -111,7 +113,9 @@
       "email": "Email"
     },
     "logout": "Sign out",
-    "loggingOut": "..."
+    "loggingOut": "...",
+    "manageSubscription": "Manage subscription",
+    "upgradePlan": "Change plan"
   },
   "sources": {
     "viewOnSefaria": "View on Sefaria",
@@ -123,5 +127,52 @@
     "fr": "Français",
     "en": "English",
     "he": "עברית"
+  },
+  "pricing": {
+    "title": "Plans & Pricing",
+    "subtitle": "Access Jewish wisdom without limits",
+    "free": "Free",
+    "perMonth": "/month",
+    "recommended": "Recommended",
+    "subscribe": "Subscribe",
+    "startTrial": "Start free trial",
+    "currentPlan": "Current plan",
+    "paymentSuccess": "Payment successful! Your plan has been updated.",
+    "paymentCancelled": "Payment cancelled.",
+    "plans": {
+      "trial": {
+        "name": "Free trial",
+        "description": "Discover Torah Chat for 7 days",
+        "features": [
+          "7-day trial",
+          "50 questions",
+          "Sefaria sources",
+          "3 languages (FR/EN/HE)"
+        ]
+      },
+      "standard": {
+        "name": "Standard",
+        "description": "For Torah students and enthusiasts",
+        "features": [
+          "500 questions/month",
+          "Enhanced AI model",
+          "Full Sefaria sources",
+          "Unlimited history",
+          "Priority support"
+        ]
+      },
+      "premium": {
+        "name": "Premium",
+        "description": "For scholars and professionals",
+        "features": [
+          "2000 questions/month",
+          "Most powerful AI model",
+          "Full Sefaria sources",
+          "Unlimited history",
+          "Dedicated support",
+          "Beta features access"
+        ]
+      }
+    }
   }
 }

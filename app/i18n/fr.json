@@ -13,7 +13,8 @@
   },
   "nav": {
     "profile": "Mon profil",
-    "chat": "Retour au chat"
+    "chat": "Retour au chat",
+    "pricing": "Tarifs"
   },
   "errors": {
     "serverConnection": "Erreur de connexion au serveur",
@@ -27,7 +28,8 @@
     "emptyState": "Posez votre question sur la Torah, le Talmud, la Halakha...",
     "inputPlaceholder": "Posez votre question sur la Torah...",
     "searchingSources": "Recherche des sources...",
-    "openMenu": "Ouvrir le menu"
+    "openMenu": "Ouvrir le menu",
+    "upgradePrompt": "Passez à un plan payant pour continuer"
   },
   "sidebar": {
     "conversations": "Conversations",
@@ -111,7 +113,9 @@
       "email": "Email"
     },
     "logout": "Déconnexion",
-    "loggingOut": "..."
+    "loggingOut": "...",
+    "manageSubscription": "Gérer mon abonnement",
+    "upgradePlan": "Changer de plan"
   },
   "sources": {
     "viewOnSefaria": "Voir sur Sefaria",
@@ -123,5 +127,52 @@
     "fr": "Français",
     "en": "English",
     "he": "עברית"
+  },
+  "pricing": {
+    "title": "Plans & Tarifs",
+    "subtitle": "Accédez à la sagesse juive sans limite",
+    "free": "Gratuit",
+    "perMonth": "/mois",
+    "recommended": "Recommandé",
+    "subscribe": "S'abonner",
+    "startTrial": "Commencer l'essai gratuit",
+    "currentPlan": "Plan actuel",
+    "paymentSuccess": "Paiement réussi ! Votre plan a été mis à jour.",
+    "paymentCancelled": "Paiement annulé.",
+    "plans": {
+      "trial": {
+        "name": "Essai gratuit",
+        "description": "Découvrez Torah Chat pendant 7 jours",
+        "features": [
+          "7 jours d'essai",
+          "50 questions",
+          "Sources Sefaria",
+          "3 langues (FR/EN/HE)"
+        ]
+      },
+      "standard": {
+        "name": "Standard",
+        "description": "Pour les étudiants et passionnés de Torah",
+        "features": [
+          "500 questions/mois",
+          "Modèle IA amélioré",
+          "Sources Sefaria complètes",
+          "Historique illimité",
+          "Support prioritaire"
+        ]
+      },
+      "premium": {
+        "name": "Premium",
+        "description": "Pour les érudits et professionnels",
+        "features": [
+          "2000 questions/mois",
+          "Modèle IA le plus puissant",
+          "Sources Sefaria complètes",
+          "Historique illimité",
+          "Support dédié",
+          "Accès aux fonctionnalités beta"
+        ]
+      }
+    }
   }
 }

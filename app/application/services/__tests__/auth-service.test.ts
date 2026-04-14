@@ -40,6 +40,7 @@ function createMockDeps(): AuthDeps {
     findById: vi.fn(),
     findByEmail: vi.fn(),
     findByProvider: vi.fn(),
+    findByStripeCustomerId: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     incrementQuestions: vi.fn(),

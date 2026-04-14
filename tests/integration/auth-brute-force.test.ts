@@ -64,6 +64,7 @@ describe("Auth brute force protection", () => {
       }),
       incrementQuestions: vi.fn(),
       resetMonthlyQuestions: vi.fn(),
+      findByStripeCustomerId: vi.fn().mockResolvedValue(null),
     };
 
     const refreshTokenRepo: RefreshTokenRepository = {
