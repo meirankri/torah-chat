@@ -1,6 +1,5 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
-import LanguageDetector from "i18next-browser-languagedetector";
 
 import fr from "./fr.json";
 import en from "./en.json";
@@ -17,11 +16,29 @@ export function isRTL(lang: string): boolean {
   return RTL_LANGUAGES.includes(lang as SupportedLanguage);
 }
 
+/**
+ * Detect user language from cookie or navigator.
+ * Must be called client-side only (after hydration).
+ */
+export function detectLanguage(): SupportedLanguage {
+  if (typeof window === "undefined") return DEFAULT_LANGUAGE;
+  const cookie = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith(`${LANGUAGE_COOKIE}=`))
+    ?.split("=")[1];
+  const candidate = cookie ?? navigator.language.split("-")[0];
+  return (SUPPORTED_LANGUAGES as readonly string[]).includes(candidate ?? "")
+    ? (candidate as SupportedLanguage)
+    : DEFAULT_LANGUAGE;
+}
+
 if (!i18n.isInitialized) {
   i18n
-    .use(LanguageDetector)
     .use(initReactI18next)
     .init({
+      // Always start with default language to match SSR output — language is
+      // applied client-side in root.tsx useEffect to avoid hydration mismatch.
+      lng: DEFAULT_LANGUAGE,
       resources: {
         fr: { translation: fr },
         en: { translation: en },
@@ -29,12 +46,6 @@ if (!i18n.isInitialized) {
       },
       fallbackLng: DEFAULT_LANGUAGE,
       supportedLngs: SUPPORTED_LANGUAGES,
-      detection: {
-        order: ["cookie", "navigator"],
-        lookupCookie: LANGUAGE_COOKIE,
-        caches: ["cookie"],
-        cookieOptions: { path: "/", sameSite: "lax" },
-      },
       interpolation: {
         escapeValue: false,
       },

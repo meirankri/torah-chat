@@ -7,29 +7,27 @@ import {
   ScrollRestoration,
 } from "react-router";
 import { useTranslation } from "react-i18next";
+import { useEffect } from "react";
 
 import type { Route } from "./+types/root";
 import "./app.css";
-import "~/i18n/config";
-import { isRTL } from "~/i18n/config";
+import i18n from "~/i18n/config";
+import { isRTL, detectLanguage } from "~/i18n/config";
 
 export function Layout({ children }: { children: React.ReactNode }) {
-  // i18n may not be ready during SSR — default to "fr" / ltr
-  let lang = "fr";
-  let dir: "ltr" | "rtl" = "ltr";
-
-  if (typeof window !== "undefined") {
-    const storedLang =
-      document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("torah-chat-lang="))
-        ?.split("=")[1] ?? navigator.language.split("-")[0];
-    lang = ["fr", "en", "he"].includes(storedLang) ? storedLang : "fr";
-    dir = isRTL(lang) ? "rtl" : "ltr";
-  }
+  // Apply lang/dir and i18n language after hydration to avoid SSR mismatch.
+  // SSR always renders with "fr" / ltr; the client switches to the real language.
+  useEffect(() => {
+    const lang = detectLanguage();
+    if (i18n.language !== lang) {
+      void i18n.changeLanguage(lang);
+    }
+    document.documentElement.lang = lang;
+    document.documentElement.dir = isRTL(lang) ? "rtl" : "ltr";
+  }, []);
 
   return (
-    <html lang={lang} dir={dir}>
+    <html lang="fr" dir="ltr" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />

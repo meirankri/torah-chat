@@ -2,6 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import type { ChatMessage, ChatError } from "~/domain/entities/chat";
 import { MAX_INPUT_LENGTH } from "~/domain/entities/chat";
 import type { MessageSource } from "~/domain/entities/source";
+import i18n from "~/i18n/config";
 
 interface ChatApiResponse {
   response: string;
@@ -110,9 +111,20 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
 
       if (!response.ok) {
         const errorData = await response.json() as { code: string; message: string };
+        // Translate error message by code when possible
+        const t = i18n.t.bind(i18n);
+        const translatedMessage = (() => {
+          switch (errorData.code) {
+            case "API_DOWN": return t("errors.apiDown");
+            case "QUOTA_EXCEEDED": return t("errors.quotaExceeded");
+            case "RATE_LIMITED": return t("errors.rateLimited");
+            case "INPUT_TOO_LONG": return t("errors.inputTooLong", { max: MAX_INPUT_LENGTH });
+            default: return errorData.message;
+          }
+        })();
         setError({
           code: errorData.code as ChatError["code"],
-          message: errorData.message,
+          message: translatedMessage,
         });
         setMessages((prev) => prev.filter((m) => m.id !== assistantMessageId));
         setIsLoading(false);

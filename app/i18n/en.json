@@ -20,7 +20,11 @@
     "serverConnection": "Server connection error",
     "unexpected": "An unexpected error occurred.",
     "notFound": "The requested page was not found.",
-    "oops": "Oops!"
+    "oops": "Oops!",
+    "apiDown": "The AI service is temporarily overloaded. Please try again in a few minutes.",
+    "quotaExceeded": "You have reached your question limit for this month. Upgrade your plan to continue.",
+    "rateLimited": "Too many requests. Please wait before retrying.",
+    "inputTooLong": "Message too long. Maximum {{max}} characters."
   },
   "chat": {
     "title": "Torah Chat",
