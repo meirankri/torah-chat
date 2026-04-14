@@ -20,6 +20,14 @@ export function useLanguage() {
       document.documentElement.dir = isRTL(lang) ? "rtl" : "ltr";
       // Persist preference in cookie (read by detectLanguage() on next load)
       document.cookie = `${LANGUAGE_COOKIE}=${lang}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
+      // Also persist in user profile if authenticated (fire-and-forget)
+      fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: lang }),
+      }).catch(() => {
+        // Non-blocking — cookie is the source of truth for unauthenticated users
+      });
     },
     [i18n]
   );

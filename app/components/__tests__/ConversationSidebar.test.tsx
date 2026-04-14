@@ -80,4 +80,25 @@ describe("ConversationSidebar", () => {
     const input = screen.getByDisplayValue("Torah question");
     expect(input).toBeDefined();
   });
+
+  it("filtre les conversations par titre", () => {
+    render(<ConversationSidebar {...defaultProps} />);
+    const searchInput = screen.getByRole("searchbox");
+    fireEvent.change(searchInput, { target: { value: "Torah" } });
+    expect(screen.getByText("Torah question")).toBeDefined();
+    expect(screen.queryByText("Talmud discussion")).toBeNull();
+  });
+
+  it("filtre sans distinction de casse", () => {
+    render(<ConversationSidebar {...defaultProps} />);
+    const searchInput = screen.getByRole("searchbox");
+    fireEvent.change(searchInput, { target: { value: "talmud" } });
+    expect(screen.getByText("Talmud discussion")).toBeDefined();
+    expect(screen.queryByText("Torah question")).toBeNull();
+  });
+
+  it("n'affiche pas la recherche quand il n'y a pas de conversations", () => {
+    render(<ConversationSidebar {...defaultProps} conversations={[]} />);
+    expect(screen.queryByRole("searchbox")).toBeNull();
+  });
 });

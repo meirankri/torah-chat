@@ -55,6 +55,8 @@
     "noConversations": "אין שיחות",
     "defaultTitle": "שיחה חדשה",
     "deleteConfirm": "למחוק את השיחה הזאת?",
+    "searchPlaceholder": "חיפוש...",
+    "noSearchResults": "לא נמצאו שיחות",
     "relativeDate": {
       "now": "עכשיו",
       "minutesAgo": "לפני {{count}} דקות",

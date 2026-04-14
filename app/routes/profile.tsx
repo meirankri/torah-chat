@@ -3,6 +3,7 @@ import { useLoaderData, Link, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { requireAuth } from "~/lib/auth/middleware";
 import { D1UserRepository } from "~/infrastructure/repositories/d1-user-repository";
+import { getPlanLimit } from "~/application/services/quota-service";
 import { useState, useRef } from "react";
 import { useSearchParams } from "react-router";
 
@@ -13,6 +14,7 @@ interface ProfileData {
   plan: string;
   provider: string;
   questionsThisMonth: number;
+  questionsLimit: number | null;
   trialEndsAt: string | null;
   emailVerified: boolean;
   createdAt: string;
@@ -34,6 +36,11 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     throw new Response("User not found", { status: 404 });
   }
 
+  const standardLimit = parseInt(
+    (env as Record<string, string>).PLAN_STANDARD_QUESTIONS_LIMIT || "500",
+    10
+  );
+
   return {
     user: {
       id: user.id,
@@ -42,6 +49,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       plan: user.plan,
       provider: user.provider,
       questionsThisMonth: user.questionsThisMonth,
+      questionsLimit: getPlanLimit(user.plan, { standardLimit, premiumLimit: 2000 }),
       trialEndsAt: user.trialEndsAt,
       emailVerified: user.emailVerified,
       createdAt: user.createdAt,
@@ -267,8 +275,26 @@ export default function Profile() {
               <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
                 {t("profile.fields.questionsThisMonth")}
               </dt>
-              <dd className="text-gray-900 dark:text-white">
-                {user.questionsThisMonth}
+              <dd className="mt-1">
+                <span className="text-gray-900 dark:text-white">
+                  {user.questionsLimit !== null
+                    ? `${user.questionsThisMonth} / ${user.questionsLimit}`
+                    : user.questionsThisMonth}
+                </span>
+                {user.questionsLimit !== null && user.questionsLimit > 0 && (
+                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        user.questionsThisMonth / user.questionsLimit >= 0.8
+                          ? "bg-amber-500"
+                          : "bg-blue-500"
+                      }`}
+                      style={{
+                        width: `${Math.min(100, (user.questionsThisMonth / user.questionsLimit) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                )}
               </dd>
             </div>
             {user.trialEndsAt && (

@@ -55,6 +55,8 @@
     "noConversations": "Aucune conversation",
     "defaultTitle": "Nouvelle conversation",
     "deleteConfirm": "Supprimer cette conversation ?",
+    "searchPlaceholder": "Rechercher...",
+    "noSearchResults": "Aucune conversation trouvée",
     "relativeDate": {
       "now": "maintenant",
       "minutesAgo": "il y a {{count}}min",

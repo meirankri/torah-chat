@@ -55,6 +55,7 @@ export function ConversationSidebar({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const startRename = (conversation: Conversation) => {
     setEditingId(conversation.id);
@@ -72,6 +73,12 @@ export function ConversationSidebar({
     onDeleteConversation(id);
     setDeletingId(null);
   };
+
+  const filteredConversations = searchQuery.trim()
+    ? conversations.filter((c) =>
+        (c.title ?? "").toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : conversations;
 
   return (
     <>
@@ -105,15 +112,30 @@ export function ConversationSidebar({
           </button>
         </div>
 
+        {/* Search */}
+        {conversations.length > 0 && (
+          <div className="border-b border-gray-200 px-3 py-2 dark:border-gray-700">
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t("sidebar.searchPlaceholder")}
+              className="w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm placeholder-gray-400 focus:border-blue-400 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder-gray-500"
+            />
+          </div>
+        )}
+
         {/* Conversation list */}
         <div className="flex-1 overflow-y-auto">
-          {conversations.length === 0 ? (
+          {filteredConversations.length === 0 ? (
             <p className="p-4 text-center text-sm text-gray-400">
-              {t("sidebar.noConversations")}
+              {searchQuery.trim()
+                ? t("sidebar.noSearchResults")
+                : t("sidebar.noConversations")}
             </p>
           ) : (
             <ul className="py-1">
-              {conversations.map((conv) => (
+              {filteredConversations.map((conv) => (
                 <li key={conv.id}>
                   {/* Delete confirmation */}
                   {deletingId === conv.id ? (

@@ -51,24 +51,41 @@ export async function action({ request, context }: Route.ActionArgs) {
   }
 
   if (request.method === "PATCH") {
-    let body: { name?: string };
+    let body: { name?: string; language?: string };
     try {
       body = await request.json();
     } catch {
       return Response.json({ error: "Invalid request body" }, { status: 400 });
     }
 
-    const { name } = body;
-    if (!name || typeof name !== "string" || name.trim().length === 0) {
-      return Response.json({ error: "name is required" }, { status: 400 });
+    const { name, language } = body;
+    const updates: { name?: string; language?: string } = {};
+
+    if (name !== undefined) {
+      if (typeof name !== "string" || name.trim().length === 0) {
+        return Response.json({ error: "name is required" }, { status: 400 });
+      }
+      if (name.trim().length > 100) {
+        return Response.json({ error: "name too long (max 100 chars)" }, { status: 400 });
+      }
+      updates.name = name.trim();
     }
-    if (name.trim().length > 100) {
-      return Response.json({ error: "name too long (max 100 chars)" }, { status: 400 });
+
+    if (language !== undefined) {
+      const SUPPORTED = ["fr", "en", "he"];
+      if (!SUPPORTED.includes(language)) {
+        return Response.json({ error: "unsupported language" }, { status: 400 });
+      }
+      updates.language = language;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return Response.json({ error: "No fields to update" }, { status: 400 });
     }
 
     const userRepo = new D1UserRepository(env.DB);
-    const updated = await userRepo.update(userId, { name: name.trim() });
-    return Response.json({ user: { name: updated.name } });
+    const updated = await userRepo.update(userId, updates);
+    return Response.json({ user: { name: updated.name, language: updated.language } });
   }
 
   if (request.method === "DELETE") {
