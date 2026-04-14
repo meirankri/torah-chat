@@ -2,6 +2,8 @@ import type { Route } from "./+types/api.auth.forgot-password";
 import { forgotPassword } from "~/application/services/auth-service";
 import { D1UserRepository } from "~/infrastructure/repositories/d1-user-repository";
 import { D1RefreshTokenRepository } from "~/infrastructure/repositories/d1-refresh-token-repository";
+import { createBrevoClient } from "~/infrastructure/email/brevo-client";
+import { sendPasswordResetEmail } from "~/application/services/email-service";
 
 export async function action({ request, context }: Route.ActionArgs) {
   if (request.method !== "POST") {
@@ -32,7 +34,21 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   // Always return success to not reveal if email exists
   try {
-    await forgotPassword(body.email, deps);
+    const result = await forgotPassword(body.email, deps);
+
+    if (result) {
+      const emailClient = createBrevoClient(env as Record<string, string>);
+      if (emailClient) {
+        const appUrl = (env as Record<string, string>).APP_URL ?? "https://torahchat.app";
+        await sendPasswordResetEmail(
+          { emailClient, appUrl },
+          { email: body.email, name: result.userName, resetToken: result.resetToken }
+        ).catch((err: unknown) => console.error("[ForgotPassword] Email failed:", err));
+      } else {
+        // Fallback: log token when email not configured
+        console.log(`[ForgotPassword] Reset token for ${body.email}: ${result.resetToken}`);
+      }
+    }
   } catch {
     // Silently ignore errors
   }

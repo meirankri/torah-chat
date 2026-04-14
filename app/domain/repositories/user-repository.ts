@@ -9,4 +9,5 @@ export interface UserRepository {
   incrementQuestions(id: string): Promise<void>;
   resetMonthlyQuestions(id: string): Promise<void>;
   findByStripeCustomerId(customerId: string): Promise<User | null>;
+  findUsersWithTrialEndingOn(dateStr: string): Promise<User[]>;
 }

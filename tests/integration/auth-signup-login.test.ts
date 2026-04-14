@@ -65,6 +65,7 @@ describe("Auth signup -> login -> refresh -> logout flow", () => {
       incrementQuestions: vi.fn(),
       resetMonthlyQuestions: vi.fn(),
       findByStripeCustomerId: vi.fn().mockResolvedValue(null),
+      findUsersWithTrialEndingOn: vi.fn().mockResolvedValue([]),
     };
 
     const refreshTokenRepo: RefreshTokenRepository = {

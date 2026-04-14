@@ -41,6 +41,7 @@ function createMockDeps(): AuthDeps {
     findByEmail: vi.fn(),
     findByProvider: vi.fn(),
     findByStripeCustomerId: vi.fn(),
+    findUsersWithTrialEndingOn: vi.fn().mockResolvedValue([]),
     create: vi.fn(),
     update: vi.fn(),
     incrementQuestions: vi.fn(),
@@ -206,7 +207,7 @@ describe("auth-service", () => {
     it("ne lance pas d'erreur pour un email inconnu", async () => {
       vi.mocked(deps.userRepo.findByEmail).mockResolvedValue(null);
 
-      await expect(forgotPassword("unknown@example.com", deps)).resolves.toBeUndefined();
+      await expect(forgotPassword("unknown@example.com", deps)).resolves.toBeNull();
     });
   });
 

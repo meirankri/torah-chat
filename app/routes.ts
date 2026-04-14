@@ -27,4 +27,5 @@ export default [
   route("api/stripe/checkout", "routes/api.stripe.checkout.ts"),
   route("api/stripe/portal", "routes/api.stripe.portal.ts"),
   route("api/stripe/webhook", "routes/api.stripe.webhook.ts"),
+  route("api/cron/trial-reminders", "routes/api.cron.trial-reminders.ts"),
 ] satisfies RouteConfig;

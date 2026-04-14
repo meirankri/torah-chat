@@ -66,17 +66,17 @@
 - [x] Portail client Stripe (lien "Gérer mon abonnement")
 
 ## Phase 8 — P0 PWA
-- [ ] manifest.json (nom, icônes 192+512px, theme_color, display standalone)
-- [ ] Service Worker (cache app shell, network-first pour API)
-- [ ] Page offline ("Connexion requise pour poser une question")
-- [ ] Bannière "Ajouter à l'écran d'accueil"
+- [x] manifest.json (nom, icônes 192+512px, theme_color, display standalone)
+- [x] Service Worker (cache app shell, network-first pour API)
+- [x] Page offline ("Connexion requise pour poser une question")
+- [x] Bannière "Ajouter à l'écran d'accueil"
 
 ## Phase 9 — P1 Améliorations
-- [ ] Bouton Stop generation
-- [ ] Bouton Regenerate (regénérer dernière réponse)
-- [ ] Bouton Copy response
-- [ ] Questions suggérées (3-4 chips au démarrage)
+- [x] Bouton Stop generation
+- [x] Bouton Regenerate (regénérer dernière réponse)
+- [x] Bouton Copy response
+- [x] Questions suggérées (3-4 chips au démarrage)
 - [ ] Cache sources Sefaria dans KV (TTL 24h configurable)
-- [ ] Rate limiting (30 req/min → HTTP 429)
+- [x] Rate limiting (30 req/min → HTTP 429)
 - [ ] Emails transactionnels Brevo (confirmation inscription, reset password, rappel trial)
 - [ ] Apple Sign-In

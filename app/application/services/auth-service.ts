@@ -176,17 +176,17 @@ export async function refreshTokens(
 export async function forgotPassword(
   email: string,
   deps: AuthDeps
-): Promise<void> {
+): Promise<{ resetToken: string; userName: string } | null> {
   const emailError = validateEmail(email);
   if (emailError) {
     // Silently return to not reveal if email exists
-    return;
+    return null;
   }
 
   const user = await deps.userRepo.findByEmail(email.toLowerCase());
   if (!user) {
     // Silently return to not reveal if email exists
-    return;
+    return null;
   }
 
   const resetToken = crypto.randomUUID();
@@ -197,10 +197,7 @@ export async function forgotPassword(
     passwordResetExpiresAt: expiresAt,
   });
 
-  // MVP stub: log instead of sending email
-  console.log(
-    `[STUB EMAIL] Password reset token for ${email}: ${resetToken}`
-  );
+  return { resetToken, userName: user.name ?? "" };
 }
 
 export async function resetPassword(

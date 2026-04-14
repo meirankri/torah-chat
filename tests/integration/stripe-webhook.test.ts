@@ -45,6 +45,7 @@ function makeRepo(user: User): UserRepository {
     findByEmail: vi.fn(),
     findByProvider: vi.fn(),
     findByStripeCustomerId: vi.fn().mockResolvedValue(user),
+    findUsersWithTrialEndingOn: vi.fn().mockResolvedValue([]),
     create: vi.fn(),
     update: vi.fn().mockResolvedValue(user),
     incrementQuestions: vi.fn(),

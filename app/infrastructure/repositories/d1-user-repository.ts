@@ -193,4 +193,15 @@ export class D1UserRepository implements UserRepository {
       .first<D1UserRow>();
     return row ? rowToUser(row) : null;
   }
+
+  async findUsersWithTrialEndingOn(dateStr: string): Promise<User[]> {
+    // Match users on free_trial plan whose trial ends on the given date (YYYY-MM-DD)
+    const result = await this.db
+      .prepare(
+        "SELECT * FROM users WHERE plan = 'free_trial' AND trial_ends_at LIKE ? || '%'"
+      )
+      .bind(dateStr)
+      .all<D1UserRow>();
+    return (result.results ?? []).map(rowToUser);
+  }
 }

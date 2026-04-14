@@ -4,6 +4,8 @@ import { D1UserRepository } from "~/infrastructure/repositories/d1-user-reposito
 import { D1RefreshTokenRepository } from "~/infrastructure/repositories/d1-refresh-token-repository";
 import { setAuthCookies } from "~/lib/auth/cookies";
 import type { SignupInput } from "~/domain/entities/auth";
+import { createBrevoClient } from "~/infrastructure/email/brevo-client";
+import { sendWelcomeEmail } from "~/application/services/email-service";
 
 export async function action({ request, context }: Route.ActionArgs) {
   if (request.method !== "POST") {
@@ -34,6 +36,16 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   try {
     const { user, tokens } = await signup(body, deps);
+
+    // Send welcome email (non-blocking — don't fail signup if email fails)
+    const emailClient = createBrevoClient(env as Record<string, string>);
+    if (emailClient) {
+      const appUrl = (env as Record<string, string>).APP_URL ?? "https://torahchat.app";
+      sendWelcomeEmail(
+        { emailClient, appUrl },
+        { email: user.email, name: user.name ?? "", trialDays: 7 }
+      ).catch((err: unknown) => console.error("[Signup] Welcome email failed:", err));
+    }
 
     const headers = new Headers();
     setAuthCookies(headers, tokens, !import.meta.env.DEV);
