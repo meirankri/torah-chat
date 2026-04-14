@@ -11,6 +11,7 @@ import { TypingIndicator } from "~/components/TypingIndicator";
 import { ChatErrorBanner } from "~/components/ChatErrorBanner";
 import { ConversationSidebar } from "~/components/ConversationSidebar";
 import { LanguageSelector } from "~/components/LanguageSelector";
+import { PwaInstallBanner } from "~/components/PwaInstallBanner";
 import { requireAuth } from "~/lib/auth/middleware";
 import type { ChatMessage as ChatMessageType } from "~/domain/entities/chat";
 
@@ -64,6 +65,8 @@ export default function Chat() {
     isLoading,
     error,
     sendMessage,
+    stopGeneration,
+    regenerateLastResponse,
     clearError,
     clearMessages,
     setMessages,
@@ -77,6 +80,12 @@ export default function Chat() {
     messages.length > 0 &&
     messages[messages.length - 1]?.role === "assistant" &&
     messages[messages.length - 1]?.content === "";
+
+  // Can regenerate if last message is a non-empty assistant message
+  const canRegenerate =
+    messages.length > 0 &&
+    messages[messages.length - 1]?.role === "assistant" &&
+    (messages[messages.length - 1]?.content?.length ?? 0) > 0;
 
   const handleNewConversation = useCallback(() => {
     setActiveConversationId(null);
@@ -102,6 +111,9 @@ export default function Chat() {
     },
     [selectConversation, setMessages]
   );
+
+  // Suggested questions — translated
+  const suggestedQuestions: string[] = t("chat.suggestedQuestions", { returnObjects: true }) as string[];
 
   return (
     <div className="flex h-screen bg-white dark:bg-gray-950">
@@ -155,13 +167,28 @@ export default function Chat() {
         <div ref={containerRef} className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-3xl space-y-4 px-4 py-6">
             {messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="flex flex-col items-center justify-center py-16 text-center">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                   {t("chat.title")}
                 </h2>
                 <p className="mt-2 text-gray-500 dark:text-gray-400">
                   {t("chat.emptyState")}
                 </p>
+
+                {/* Suggested questions */}
+                {Array.isArray(suggestedQuestions) && suggestedQuestions.length > 0 && (
+                  <div className="mt-8 flex flex-wrap justify-center gap-2">
+                    {suggestedQuestions.map((question) => (
+                      <button
+                        key={question}
+                        onClick={() => sendMessage(question)}
+                        className="rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-700 hover:bg-blue-100 transition-colors dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-900/40"
+                      >
+                        {question}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -174,8 +201,18 @@ export default function Chat() {
         </div>
 
         {/* Input */}
-        <ChatInput onSend={sendMessage} disabled={isLoading} />
+        <ChatInput
+          onSend={sendMessage}
+          onStop={stopGeneration}
+          onRegenerate={regenerateLastResponse}
+          disabled={isLoading}
+          isLoading={isLoading}
+          canRegenerate={canRegenerate}
+        />
       </div>
+
+      {/* PWA install banner */}
+      <PwaInstallBanner />
     </div>
   );
 }

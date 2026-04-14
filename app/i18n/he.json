@@ -29,7 +29,17 @@
     "inputPlaceholder": "שאל שאלה על התורה...",
     "searchingSources": "מחפש מקורות...",
     "openMenu": "פתח תפריט",
-    "upgradePrompt": "שדרג לתוכנית בתשלום כדי להמשיך"
+    "upgradePrompt": "שדרג לתוכנית בתשלום כדי להמשיך",
+    "stop": "עצור",
+    "regenerate": "צור מחדש",
+    "copy": "העתק",
+    "copied": "הועתק!",
+    "suggestedQuestions": [
+      "מהו השבת?",
+      "הסבר את מושג תיקון עולם",
+      "מהן חוקי הכשרות?",
+      "מהי הקבלה?"
+    ]
   },
   "sidebar": {
     "conversations": "שיחות",
@@ -127,6 +137,16 @@
     "fr": "Français",
     "en": "English",
     "he": "עברית"
+  },
+  "offline": {
+    "title": "אין חיבור לאינטרנט",
+    "message": "נדרש חיבור לאינטרנט כדי לשאול שאלה. בדוק את החיבור ונסה שוב.",
+    "retry": "נסה שוב"
+  },
+  "pwa": {
+    "installTitle": "התקן את Torah Chat",
+    "installSubtitle": "גישה מהירה ממסך הבית שלך",
+    "install": "התקן"
   },
   "pricing": {
     "title": "תוכניות ומחירים",

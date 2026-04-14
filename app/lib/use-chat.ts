@@ -22,6 +22,8 @@ interface UseChatReturn {
   error: ChatError | null;
   conversationId: string | null;
   sendMessage: (content: string) => Promise<void>;
+  stopGeneration: () => void;
+  regenerateLastResponse: () => Promise<void>;
   clearError: () => void;
   clearMessages: () => void;
   setMessages: (messages: ChatMessage[]) => void;
@@ -40,12 +42,20 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   );
   const abortControllerRef = useRef<AbortController | null>(null);
   const exchangeCountRef = useRef(0);
+  // Keep a ref to the last user message for regeneration
+  const lastUserContentRef = useRef<string | null>(null);
 
   const clearError = useCallback(() => setError(null), []);
   const clearMessages = useCallback(() => {
     setMessages([]);
     setConversationId(null);
     exchangeCountRef.current = 0;
+    lastUserContentRef.current = null;
+  }, []);
+
+  const stopGeneration = useCallback(() => {
+    abortControllerRef.current?.abort();
+    setIsLoading(false);
   }, []);
 
   const sendMessage = useCallback(async (content: string) => {
@@ -60,6 +70,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       return;
     }
 
+    lastUserContentRef.current = trimmed;
     setError(null);
     setIsLoading(true);
 
@@ -145,6 +156,8 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
+        // Remove the empty assistant message on stop
+        setMessages((prev) => prev.filter((m) => m.id !== assistantMessageId));
         return;
       }
       setError({
@@ -158,12 +171,29 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     }
   }, [messages, conversationId, options]);
 
+  const regenerateLastResponse = useCallback(async () => {
+    const lastUserContent = lastUserContentRef.current;
+    if (!lastUserContent || isLoading) return;
+
+    // Remove the last assistant message (and possibly its user message for a fresh retry)
+    setMessages((prev) => {
+      const lastAssistantIdx = [...prev].reverse().findIndex((m) => m.role === "assistant");
+      if (lastAssistantIdx === -1) return prev;
+      const realIdx = prev.length - 1 - lastAssistantIdx;
+      return prev.slice(0, realIdx);
+    });
+
+    await sendMessage(lastUserContent);
+  }, [isLoading, sendMessage]);
+
   return {
     messages,
     isLoading,
     error,
     conversationId,
     sendMessage,
+    stopGeneration,
+    regenerateLastResponse,
     clearError,
     clearMessages,
     setMessages,

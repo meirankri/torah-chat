@@ -23,6 +23,7 @@ export default [
   route("api/conversations/:id", "routes/api.conversations.$id.ts"),
   route("api/conversations/:id/title", "routes/api.conversations.$id.title.ts"),
   route("pricing", "routes/pricing.tsx"),
+  route("offline", "routes/offline.tsx"),
   route("api/stripe/checkout", "routes/api.stripe.checkout.ts"),
   route("api/stripe/portal", "routes/api.stripe.portal.ts"),
   route("api/stripe/webhook", "routes/api.stripe.webhook.ts"),

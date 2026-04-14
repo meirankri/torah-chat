@@ -10,6 +10,7 @@ import { requireAuth } from "~/lib/auth/middleware";
 import { D1ConversationRepository } from "~/infrastructure/repositories/d1-conversation-repository";
 import { D1UserRepository } from "~/infrastructure/repositories/d1-user-repository";
 import { checkAndIncrementQuota, getModelForPlan } from "~/application/services/quota-service";
+import { checkRateLimit } from "~/lib/rate-limit";
 
 const MAX_HISTORY_MESSAGES = 10;
 const MAX_SEFARIA_SOURCES = 5;
@@ -65,6 +66,24 @@ export async function action({ request, context }: Route.ActionArgs) {
       userId = auth.userId;
     } catch {
       return chatErrorResponse("UNKNOWN", "Authentication required", 401);
+    }
+  }
+
+  // Rate limiting: 30 req/min per user (or IP if no user)
+  if (env.CACHE) {
+    const rateLimitKey = userId ?? (request.headers.get("CF-Connecting-IP") ?? "anonymous");
+    const rl = await checkRateLimit(env.CACHE, rateLimitKey);
+    if (!rl.allowed) {
+      return new Response(
+        JSON.stringify({ code: "RATE_LIMITED", message: "Trop de requêtes. Veuillez patienter avant de réessayer." }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "Retry-After": String(rl.resetAt - Math.floor(Date.now() / 1000)),
+          },
+        }
+      );
     }
   }
 

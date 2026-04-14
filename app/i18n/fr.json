@@ -29,7 +29,17 @@
     "inputPlaceholder": "Posez votre question sur la Torah...",
     "searchingSources": "Recherche des sources...",
     "openMenu": "Ouvrir le menu",
-    "upgradePrompt": "Passez à un plan payant pour continuer"
+    "upgradePrompt": "Passez à un plan payant pour continuer",
+    "stop": "Arrêter",
+    "regenerate": "Régénérer",
+    "copy": "Copier",
+    "copied": "Copié !",
+    "suggestedQuestions": [
+      "Qu'est-ce que le Shabbat ?",
+      "Expliquez le concept de Tikoun Olam",
+      "Quelles sont les lois de Cacherout ?",
+      "Qu'est-ce que la Kabbale ?"
+    ]
   },
   "sidebar": {
     "conversations": "Conversations",
@@ -127,6 +137,16 @@
     "fr": "Français",
     "en": "English",
     "he": "עברית"
+  },
+  "offline": {
+    "title": "Vous êtes hors ligne",
+    "message": "Une connexion internet est requise pour poser une question. Vérifiez votre connexion et réessayez.",
+    "retry": "Réessayer"
+  },
+  "pwa": {
+    "installTitle": "Installer Torah Chat",
+    "installSubtitle": "Accédez rapidement depuis votre écran d'accueil",
+    "install": "Installer"
   },
   "pricing": {
     "title": "Plans & Tarifs",

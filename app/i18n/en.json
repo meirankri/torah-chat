@@ -29,7 +29,17 @@
     "inputPlaceholder": "Ask your question about the Torah...",
     "searchingSources": "Searching sources...",
     "openMenu": "Open menu",
-    "upgradePrompt": "Upgrade to a paid plan to continue"
+    "upgradePrompt": "Upgrade to a paid plan to continue",
+    "stop": "Stop",
+    "regenerate": "Regenerate",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "suggestedQuestions": [
+      "What is Shabbat?",
+      "Explain the concept of Tikkun Olam",
+      "What are the laws of Kashrut?",
+      "What is Kabbalah?"
+    ]
   },
   "sidebar": {
     "conversations": "Conversations",
@@ -127,6 +137,16 @@
     "fr": "Français",
     "en": "English",
     "he": "עברית"
+  },
+  "offline": {
+    "title": "You are offline",
+    "message": "An internet connection is required to ask a question. Check your connection and try again.",
+    "retry": "Retry"
+  },
+  "pwa": {
+    "installTitle": "Install Torah Chat",
+    "installSubtitle": "Quick access from your home screen",
+    "install": "Install"
   },
   "pricing": {
     "title": "Plans & Pricing",
