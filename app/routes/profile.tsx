@@ -1,5 +1,6 @@
 import type { Route } from "./+types/profile";
 import { useLoaderData, Link, useNavigate } from "react-router";
+import { useTranslation } from "react-i18next";
 import { requireAuth } from "~/lib/auth/middleware";
 import { D1UserRepository } from "~/infrastructure/repositories/d1-user-repository";
 import { useState } from "react";
@@ -46,14 +47,8 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   };
 }
 
-const PLAN_LABELS: Record<string, string> = {
-  free_trial: "Essai gratuit",
-  standard: "Standard",
-  premium: "Premium",
-  expired: "Expiré",
-};
-
 export default function Profile() {
+  const { t, i18n } = useTranslation();
   const { user } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
   const [loggingOut, setLoggingOut] = useState(false);
@@ -68,12 +63,20 @@ export default function Profile() {
     }
   };
 
+  const planLabel =
+    t(`profile.plans.${user.plan}`, { defaultValue: user.plan });
+
+  const providerLabel =
+    user.provider === "google"
+      ? t("profile.providers.google")
+      : t("profile.providers.email");
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 dark:bg-gray-950">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Mon profil
+            {t("profile.title")}
           </h1>
         </div>
 
@@ -81,27 +84,25 @@ export default function Profile() {
           <dl className="space-y-4">
             <div>
               <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                Nom
+                {t("profile.fields.name")}
               </dt>
               <dd className="text-gray-900 dark:text-white">{user.name}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                Email
+                {t("profile.fields.email")}
               </dt>
               <dd className="text-gray-900 dark:text-white">{user.email}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                Plan
+                {t("profile.fields.plan")}
               </dt>
-              <dd className="text-gray-900 dark:text-white">
-                {PLAN_LABELS[user.plan] ?? user.plan}
-              </dd>
+              <dd className="text-gray-900 dark:text-white">{planLabel}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                Questions ce mois
+                {t("profile.fields.questionsThisMonth")}
               </dt>
               <dd className="text-gray-900 dark:text-white">
                 {user.questionsThisMonth}
@@ -110,20 +111,18 @@ export default function Profile() {
             {user.trialEndsAt && (
               <div>
                 <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                  Fin de l'essai
+                  {t("profile.fields.trialEndsAt")}
                 </dt>
                 <dd className="text-gray-900 dark:text-white">
-                  {new Date(user.trialEndsAt).toLocaleDateString("fr-FR")}
+                  {new Date(user.trialEndsAt).toLocaleDateString(i18n.language)}
                 </dd>
               </div>
             )}
             <div>
               <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                Connexion via
+                {t("profile.fields.loginVia")}
               </dt>
-              <dd className="text-gray-900 dark:text-white">
-                {user.provider === "google" ? "Google" : "Email"}
-              </dd>
+              <dd className="text-gray-900 dark:text-white">{providerLabel}</dd>
             </div>
           </dl>
 
@@ -132,14 +131,14 @@ export default function Profile() {
               to="/chat"
               className="flex-1 rounded-md bg-blue-600 px-4 py-2 text-center font-medium text-white hover:bg-blue-700"
             >
-              Retour au chat
+              {t("nav.chat")}
             </Link>
             <button
               onClick={handleLogout}
               disabled={loggingOut}
               className="flex-1 rounded-md border border-gray-300 bg-white px-4 py-2 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
             >
-              {loggingOut ? "..." : "Déconnexion"}
+              {loggingOut ? t("profile.loggingOut") : t("profile.logout")}
             </button>
           </div>
         </div>

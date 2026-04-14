@@ -1,21 +1,23 @@
 import { useState } from "react";
 import { Link } from "react-router";
+import { useTranslation } from "react-i18next";
 import { AuthForm } from "~/components/auth/AuthForm";
 
-const FORGOT_PASSWORD_FIELDS = [
-  {
-    name: "email",
-    type: "email",
-    label: "Email",
-    placeholder: "votre@email.com",
-    autoComplete: "email",
-  },
-];
-
 export default function ForgotPassword() {
+  const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const forgotPasswordFields = [
+    {
+      name: "email",
+      type: "email",
+      label: t("auth.fields.email"),
+      placeholder: t("auth.fields.emailPlaceholder"),
+      autoComplete: "email",
+    },
+  ];
 
   const handleSubmit = async (data: Record<string, string>) => {
     setError(null);
@@ -36,7 +38,7 @@ export default function ForgotPassword() {
 
       setSuccess(true);
     } catch {
-      setError("Erreur de connexion au serveur");
+      setError(t("errors.serverConnection"));
     } finally {
       setLoading(false);
     }
@@ -47,10 +49,10 @@ export default function ForgotPassword() {
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Mot de passe oublié
+            {t("auth.forgotPassword.title")}
           </h1>
           <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Entrez votre email pour recevoir un lien de réinitialisation
+            {t("auth.forgotPassword.subtitle")}
           </p>
         </div>
 
@@ -58,20 +60,19 @@ export default function ForgotPassword() {
           {success ? (
             <div className="text-center">
               <p className="text-sm text-green-700 dark:text-green-400">
-                Si un compte existe avec cet email, vous recevrez un lien de
-                réinitialisation.
+                {t("auth.forgotPassword.successMessage")}
               </p>
               <Link
                 to="/login"
                 className="mt-4 inline-block text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
               >
-                Retour à la connexion
+                {t("auth.forgotPassword.backToLogin")}
               </Link>
             </div>
           ) : (
             <AuthForm
-              fields={FORGOT_PASSWORD_FIELDS}
-              submitLabel="Envoyer le lien"
+              fields={forgotPasswordFields}
+              submitLabel={t("auth.forgotPassword.submit")}
               onSubmit={handleSubmit}
               error={error}
               loading={loading}
@@ -85,7 +86,7 @@ export default function ForgotPassword() {
               to="/login"
               className="font-medium text-blue-600 hover:underline dark:text-blue-400"
             >
-              Retour à la connexion
+              {t("auth.forgotPassword.backToLogin")}
             </Link>
           </p>
         )}

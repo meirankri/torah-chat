@@ -1,4 +1,5 @@
 import { Suspense, lazy } from "react";
+import { useTranslation } from "react-i18next";
 import type { ChatMessage as ChatMessageType } from "~/domain/entities/chat";
 import { SourceBlock } from "./SourceBlock";
 
@@ -11,6 +12,7 @@ interface ChatMessageProps {
 }
 
 export function ChatMessage({ message }: ChatMessageProps) {
+  const { t } = useTranslation();
   const isUser = message.role === "user";
 
   return (
@@ -41,7 +43,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            <span>Recherche des sources...</span>
+            <span>{t("chat.searchingSources")}</span>
           </div>
         )}
 

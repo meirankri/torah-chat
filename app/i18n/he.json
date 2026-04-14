@@ -1,0 +1,127 @@
+{
+  "common": {
+    "or": "או",
+    "loading": "טוען...",
+    "error": "שגיאה",
+    "cancel": "ביטול",
+    "save": "שמור",
+    "delete": "מחק",
+    "rename": "שנה שם",
+    "close": "סגור",
+    "back": "חזרה",
+    "send": "שלח"
+  },
+  "nav": {
+    "profile": "הפרופיל שלי",
+    "chat": "חזרה לצ'אט"
+  },
+  "errors": {
+    "serverConnection": "שגיאת חיבור לשרת",
+    "unexpected": "אירעה שגיאה בלתי צפויה.",
+    "notFound": "הדף המבוקש לא נמצא.",
+    "oops": "אופס!"
+  },
+  "chat": {
+    "title": "Torah Chat",
+    "description": "שאל שאלות על התורה",
+    "emptyState": "שאל שאלה על התורה, התלמוד, ההלכה...",
+    "inputPlaceholder": "שאל שאלה על התורה...",
+    "searchingSources": "מחפש מקורות...",
+    "openMenu": "פתח תפריט"
+  },
+  "sidebar": {
+    "conversations": "שיחות",
+    "newConversation": "+ חדש",
+    "noConversations": "אין שיחות",
+    "defaultTitle": "שיחה חדשה",
+    "deleteConfirm": "למחוק את השיחה הזאת?",
+    "relativeDate": {
+      "now": "עכשיו",
+      "minutesAgo": "לפני {{count}} דקות",
+      "hoursAgo": "לפני {{count}} שעות",
+      "yesterday": "אתמול",
+      "daysAgo": "לפני {{count}} ימים"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "התחברות",
+      "subtitle": "התחבר כדי לגשת ל-Torah Chat",
+      "submit": "התחבר",
+      "forgotPassword": "שכחת סיסמה?",
+      "noAccount": "אין לך חשבון?",
+      "signupLink": "הירשם",
+      "googleFailed": "ההתחברות דרך Google נכשלה. נסה שוב.",
+      "googleNotConfigured": "ההתחברות דרך Google אינה מוגדרת."
+    },
+    "signup": {
+      "title": "הרשמה",
+      "subtitle": "צור את חשבון Torah Chat שלך",
+      "submit": "הירשם",
+      "alreadyAccount": "כבר יש לך חשבון?",
+      "loginLink": "התחבר",
+      "googleButton": "הירשם עם Google"
+    },
+    "forgotPassword": {
+      "title": "שכחת סיסמה",
+      "subtitle": "הזן את האימייל שלך לקבלת קישור איפוס",
+      "submit": "שלח קישור",
+      "successMessage": "אם קיים חשבון עם האימייל הזה, תקבל קישור לאיפוס הסיסמה.",
+      "backToLogin": "חזרה להתחברות"
+    },
+    "resetPassword": {
+      "title": "איפוס סיסמה",
+      "submit": "אפס סיסמה",
+      "successMessage": "הסיסמה אופסה בהצלחה.",
+      "loginLink": "התחבר",
+      "invalidLink": "קישור איפוס לא תקין"
+    },
+    "fields": {
+      "name": "שם",
+      "namePlaceholder": "השם שלך",
+      "email": "אימייל",
+      "emailPlaceholder": "your@email.com",
+      "password": "סיסמה",
+      "passwordPlaceholder": "הסיסמה שלך",
+      "passwordNewPlaceholder": "מינ. 8 תווים, אות גדולה אחת, ספרה אחת",
+      "newPassword": "סיסמה חדשה"
+    },
+    "google": {
+      "continueWith": "המשך עם Google"
+    }
+  },
+  "profile": {
+    "title": "הפרופיל שלי",
+    "fields": {
+      "name": "שם",
+      "email": "אימייל",
+      "plan": "תוכנית",
+      "questionsThisMonth": "שאלות החודש",
+      "trialEndsAt": "תאריך סיום ניסיון",
+      "loginVia": "התחברות דרך"
+    },
+    "plans": {
+      "free_trial": "ניסיון חינם",
+      "standard": "רגיל",
+      "premium": "פרמיום",
+      "expired": "פג תוקף"
+    },
+    "providers": {
+      "google": "Google",
+      "email": "אימייל"
+    },
+    "logout": "התנתקות",
+    "loggingOut": "..."
+  },
+  "sources": {
+    "viewOnSefaria": "צפה ב-Sefaria",
+    "showMore": "הצג עוד",
+    "showLess": "הצג פחות"
+  },
+  "language": {
+    "selector": "שפה",
+    "fr": "Français",
+    "en": "English",
+    "he": "עברית"
+  }
+}

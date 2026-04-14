@@ -1,10 +1,13 @@
+import { useTranslation } from "react-i18next";
+
 interface GoogleSignInButtonProps {
   label?: string;
 }
 
-export function GoogleSignInButton({
-  label = "Continuer avec Google",
-}: GoogleSignInButtonProps) {
+export function GoogleSignInButton({ label }: GoogleSignInButtonProps) {
+  const { t } = useTranslation();
+  const buttonLabel = label ?? t("auth.google.continueWith");
+
   return (
     <a
       href="/api/auth/google"
@@ -28,7 +31,7 @@ export function GoogleSignInButton({
           fill="#EA4335"
         />
       </svg>
-      {label}
+      {buttonLabel}
     </a>
   );
 }

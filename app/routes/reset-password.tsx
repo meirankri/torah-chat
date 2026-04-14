@@ -1,26 +1,28 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
+import { useTranslation } from "react-i18next";
 import { AuthForm } from "~/components/auth/AuthForm";
 
-const RESET_PASSWORD_FIELDS = [
-  {
-    name: "newPassword",
-    type: "password",
-    label: "Nouveau mot de passe",
-    placeholder: "Min. 8 caractères, 1 majuscule, 1 chiffre",
-    autoComplete: "new-password",
-  },
-];
-
 export default function ResetPassword() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const email = searchParams.get("email");
   const [error, setError] = useState<string | null>(
-    !token || !email ? "Lien de réinitialisation invalide" : null
+    !token || !email ? t("auth.resetPassword.invalidLink") : null
   );
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const resetPasswordFields = [
+    {
+      name: "newPassword",
+      type: "password",
+      label: t("auth.fields.newPassword"),
+      placeholder: t("auth.fields.passwordNewPlaceholder"),
+      autoComplete: "new-password",
+    },
+  ];
 
   const handleSubmit = async (data: Record<string, string>) => {
     if (!token || !email) return;
@@ -48,7 +50,7 @@ export default function ResetPassword() {
 
       setSuccess(true);
     } catch {
-      setError("Erreur de connexion au serveur");
+      setError(t("errors.serverConnection"));
     } finally {
       setLoading(false);
     }
@@ -59,7 +61,7 @@ export default function ResetPassword() {
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Réinitialiser le mot de passe
+            {t("auth.resetPassword.title")}
           </h1>
         </div>
 
@@ -67,19 +69,19 @@ export default function ResetPassword() {
           {success ? (
             <div className="text-center">
               <p className="text-sm text-green-700 dark:text-green-400">
-                Mot de passe réinitialisé avec succès.
+                {t("auth.resetPassword.successMessage")}
               </p>
               <Link
                 to="/login"
                 className="mt-4 inline-block text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
               >
-                Se connecter
+                {t("auth.resetPassword.loginLink")}
               </Link>
             </div>
           ) : (
             <AuthForm
-              fields={RESET_PASSWORD_FIELDS}
-              submitLabel="Réinitialiser"
+              fields={resetPasswordFields}
+              submitLabel={t("auth.resetPassword.submit")}
               onSubmit={handleSubmit}
               error={error}
               loading={loading || !token || !email}

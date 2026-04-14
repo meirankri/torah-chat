@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { MessageSource } from "~/domain/entities/source";
 
 interface SourceBlockProps {
@@ -27,6 +28,7 @@ function getCategoryColor(category: string | null): string {
 const COLLAPSED_MAX_LENGTH = 150;
 
 export function SourceBlock({ source }: SourceBlockProps) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
 
   const hebrewText = source.textHebrew ?? "";
@@ -114,7 +116,7 @@ export function SourceBlock({ source }: SourceBlockProps) {
               onClick={() => setExpanded(!expanded)}
               className="text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
             >
-              {expanded ? "Voir moins" : "Voir plus"}
+              {expanded ? t("sources.showLess") : t("sources.showMore")}
             </button>
           )}
         </div>
@@ -129,7 +131,7 @@ export function SourceBlock({ source }: SourceBlockProps) {
             rel="noopener noreferrer"
             className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
           >
-            Voir sur Sefaria
+            {t("sources.viewOnSefaria")}
           </a>
         </div>
       )}

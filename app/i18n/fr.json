@@ -1,0 +1,127 @@
+{
+  "common": {
+    "or": "ou",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "rename": "Renommer",
+    "close": "Fermer",
+    "back": "Retour",
+    "send": "Envoyer"
+  },
+  "nav": {
+    "profile": "Mon profil",
+    "chat": "Retour au chat"
+  },
+  "errors": {
+    "serverConnection": "Erreur de connexion au serveur",
+    "unexpected": "Une erreur inattendue est survenue.",
+    "notFound": "La page demandée est introuvable.",
+    "oops": "Oops!"
+  },
+  "chat": {
+    "title": "Torah Chat",
+    "description": "Posez vos questions sur la Torah",
+    "emptyState": "Posez votre question sur la Torah, le Talmud, la Halakha...",
+    "inputPlaceholder": "Posez votre question sur la Torah...",
+    "searchingSources": "Recherche des sources...",
+    "openMenu": "Ouvrir le menu"
+  },
+  "sidebar": {
+    "conversations": "Conversations",
+    "newConversation": "+ Nouvelle",
+    "noConversations": "Aucune conversation",
+    "defaultTitle": "Nouvelle conversation",
+    "deleteConfirm": "Supprimer cette conversation ?",
+    "relativeDate": {
+      "now": "maintenant",
+      "minutesAgo": "il y a {{count}}min",
+      "hoursAgo": "il y a {{count}}h",
+      "yesterday": "hier",
+      "daysAgo": "il y a {{count}}j"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Connexion",
+      "subtitle": "Connectez-vous pour accéder à Torah Chat",
+      "submit": "Se connecter",
+      "forgotPassword": "Mot de passe oublié ?",
+      "noAccount": "Pas encore de compte ?",
+      "signupLink": "S'inscrire",
+      "googleFailed": "La connexion Google a échoué. Veuillez réessayer.",
+      "googleNotConfigured": "La connexion Google n'est pas configurée."
+    },
+    "signup": {
+      "title": "Inscription",
+      "subtitle": "Créez votre compte Torah Chat",
+      "submit": "S'inscrire",
+      "alreadyAccount": "Déjà un compte ?",
+      "loginLink": "Se connecter",
+      "googleButton": "S'inscrire avec Google"
+    },
+    "forgotPassword": {
+      "title": "Mot de passe oublié",
+      "subtitle": "Entrez votre email pour recevoir un lien de réinitialisation",
+      "submit": "Envoyer le lien",
+      "successMessage": "Si un compte existe avec cet email, vous recevrez un lien de réinitialisation.",
+      "backToLogin": "Retour à la connexion"
+    },
+    "resetPassword": {
+      "title": "Réinitialiser le mot de passe",
+      "submit": "Réinitialiser",
+      "successMessage": "Mot de passe réinitialisé avec succès.",
+      "loginLink": "Se connecter",
+      "invalidLink": "Lien de réinitialisation invalide"
+    },
+    "fields": {
+      "name": "Nom",
+      "namePlaceholder": "Votre nom",
+      "email": "Email",
+      "emailPlaceholder": "votre@email.com",
+      "password": "Mot de passe",
+      "passwordPlaceholder": "Votre mot de passe",
+      "passwordNewPlaceholder": "Min. 8 caractères, 1 majuscule, 1 chiffre",
+      "newPassword": "Nouveau mot de passe"
+    },
+    "google": {
+      "continueWith": "Continuer avec Google"
+    }
+  },
+  "profile": {
+    "title": "Mon profil",
+    "fields": {
+      "name": "Nom",
+      "email": "Email",
+      "plan": "Plan",
+      "questionsThisMonth": "Questions ce mois",
+      "trialEndsAt": "Fin de l'essai",
+      "loginVia": "Connexion via"
+    },
+    "plans": {
+      "free_trial": "Essai gratuit",
+      "standard": "Standard",
+      "premium": "Premium",
+      "expired": "Expiré"
+    },
+    "providers": {
+      "google": "Google",
+      "email": "Email"
+    },
+    "logout": "Déconnexion",
+    "loggingOut": "..."
+  },
+  "sources": {
+    "viewOnSefaria": "Voir sur Sefaria",
+    "showMore": "Voir plus",
+    "showLess": "Voir moins"
+  },
+  "language": {
+    "selector": "Langue",
+    "fr": "Français",
+    "en": "English",
+    "he": "עברית"
+  }
+}

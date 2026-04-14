@@ -1,6 +1,7 @@
 import type { Route } from "./+types/chat";
 import { useState, useCallback, useMemo } from "react";
 import { Link } from "react-router";
+import { useTranslation } from "react-i18next";
 import { useChat } from "~/lib/use-chat";
 import { useConversations } from "~/lib/use-conversations";
 import { useAutoScroll } from "~/lib/use-auto-scroll";
@@ -9,6 +10,7 @@ import { ChatMessage } from "~/components/ChatMessage";
 import { TypingIndicator } from "~/components/TypingIndicator";
 import { ChatErrorBanner } from "~/components/ChatErrorBanner";
 import { ConversationSidebar } from "~/components/ConversationSidebar";
+import { LanguageSelector } from "~/components/LanguageSelector";
 import { requireAuth } from "~/lib/auth/middleware";
 import type { ChatMessage as ChatMessageType } from "~/domain/entities/chat";
 
@@ -25,11 +27,12 @@ export async function loader({ request, context }: Route.LoaderArgs) {
 export function meta(_args: Route.MetaArgs) {
   return [
     { title: "Torah Chat" },
-    { name: "description", content: "Posez vos questions sur la Torah" },
+    { name: "description", content: "Ask your questions about the Torah" },
   ];
 }
 
 export default function Chat() {
+  const { t } = useTranslation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const {
     conversations,
@@ -123,21 +126,25 @@ export default function Chat() {
               <button
                 onClick={() => setSidebarOpen(true)}
                 className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 lg:hidden dark:text-gray-400 dark:hover:bg-gray-800"
+                aria-label={t("chat.openMenu")}
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
                 </svg>
               </button>
               <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Torah Chat
+                {t("chat.title")}
               </h1>
             </div>
-            <Link
-              to="/profile"
-              className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            >
-              Mon profil
-            </Link>
+            <div className="flex items-center gap-3">
+              <LanguageSelector />
+              <Link
+                to="/profile"
+                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                {t("nav.profile")}
+              </Link>
+            </div>
           </div>
         </header>
 
@@ -150,10 +157,10 @@ export default function Chat() {
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  Torah Chat
+                  {t("chat.title")}
                 </h2>
                 <p className="mt-2 text-gray-500 dark:text-gray-400">
-                  Posez votre question sur la Torah, le Talmud, la Halakha...
+                  {t("chat.emptyState")}
                 </p>
               </div>
             )}

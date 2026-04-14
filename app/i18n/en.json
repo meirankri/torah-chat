@@ -1,0 +1,127 @@
+{
+  "common": {
+    "or": "or",
+    "loading": "Loading...",
+    "error": "Error",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "rename": "Rename",
+    "close": "Close",
+    "back": "Back",
+    "send": "Send"
+  },
+  "nav": {
+    "profile": "My profile",
+    "chat": "Back to chat"
+  },
+  "errors": {
+    "serverConnection": "Server connection error",
+    "unexpected": "An unexpected error occurred.",
+    "notFound": "The requested page was not found.",
+    "oops": "Oops!"
+  },
+  "chat": {
+    "title": "Torah Chat",
+    "description": "Ask your questions about the Torah",
+    "emptyState": "Ask your question about the Torah, Talmud, Halakha...",
+    "inputPlaceholder": "Ask your question about the Torah...",
+    "searchingSources": "Searching sources...",
+    "openMenu": "Open menu"
+  },
+  "sidebar": {
+    "conversations": "Conversations",
+    "newConversation": "+ New",
+    "noConversations": "No conversations",
+    "defaultTitle": "New conversation",
+    "deleteConfirm": "Delete this conversation?",
+    "relativeDate": {
+      "now": "just now",
+      "minutesAgo": "{{count}}min ago",
+      "hoursAgo": "{{count}}h ago",
+      "yesterday": "yesterday",
+      "daysAgo": "{{count}}d ago"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Sign in",
+      "subtitle": "Sign in to access Torah Chat",
+      "submit": "Sign in",
+      "forgotPassword": "Forgot password?",
+      "noAccount": "Don't have an account?",
+      "signupLink": "Sign up",
+      "googleFailed": "Google sign-in failed. Please try again.",
+      "googleNotConfigured": "Google sign-in is not configured."
+    },
+    "signup": {
+      "title": "Sign up",
+      "subtitle": "Create your Torah Chat account",
+      "submit": "Sign up",
+      "alreadyAccount": "Already have an account?",
+      "loginLink": "Sign in",
+      "googleButton": "Sign up with Google"
+    },
+    "forgotPassword": {
+      "title": "Forgot password",
+      "subtitle": "Enter your email to receive a reset link",
+      "submit": "Send link",
+      "successMessage": "If an account exists with this email, you will receive a reset link.",
+      "backToLogin": "Back to sign in"
+    },
+    "resetPassword": {
+      "title": "Reset password",
+      "submit": "Reset",
+      "successMessage": "Password reset successfully.",
+      "loginLink": "Sign in",
+      "invalidLink": "Invalid reset link"
+    },
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "Your name",
+      "email": "Email",
+      "emailPlaceholder": "your@email.com",
+      "password": "Password",
+      "passwordPlaceholder": "Your password",
+      "passwordNewPlaceholder": "Min. 8 characters, 1 uppercase, 1 number",
+      "newPassword": "New password"
+    },
+    "google": {
+      "continueWith": "Continue with Google"
+    }
+  },
+  "profile": {
+    "title": "My profile",
+    "fields": {
+      "name": "Name",
+      "email": "Email",
+      "plan": "Plan",
+      "questionsThisMonth": "Questions this month",
+      "trialEndsAt": "Trial ends",
+      "loginVia": "Signed in via"
+    },
+    "plans": {
+      "free_trial": "Free trial",
+      "standard": "Standard",
+      "premium": "Premium",
+      "expired": "Expired"
+    },
+    "providers": {
+      "google": "Google",
+      "email": "Email"
+    },
+    "logout": "Sign out",
+    "loggingOut": "..."
+  },
+  "sources": {
+    "viewOnSefaria": "View on Sefaria",
+    "showMore": "Show more",
+    "showLess": "Show less"
+  },
+  "language": {
+    "selector": "Language",
+    "fr": "Français",
+    "en": "English",
+    "he": "עברית"
+  }
+}
