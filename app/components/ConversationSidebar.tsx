@@ -18,8 +18,10 @@ interface ConversationItemProps {
   onCancelDelete: () => void;
   onArchive: () => void;
   onShare: () => void;
+  onExport: () => void;
   archiveLabel: string;
   shareLabel: string;
+  exportLabel: string;
   renameLabel: string;
   deleteLabel: string;
   deleteConfirmLabel: string;
@@ -45,8 +47,10 @@ function ConversationItem({
   onCancelDelete,
   onArchive,
   onShare,
+  onExport,
   archiveLabel,
   shareLabel,
+  exportLabel,
   renameLabel,
   deleteLabel,
   deleteConfirmLabel,
@@ -136,6 +140,15 @@ function ConversationItem({
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
+              </svg>
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onExport(); }}
+              className="rounded p-1 text-gray-400 hover:bg-indigo-100 hover:text-indigo-600 dark:hover:bg-indigo-900/30 dark:hover:text-indigo-400"
+              title={exportLabel}
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
               </svg>
             </button>
             <button
@@ -262,6 +275,16 @@ export function ConversationSidebar({
     }
   }, []);
 
+  const handleExport = useCallback((convId: string, convTitle: string | null) => {
+    const url = `/api/conversations/${convId}/export`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${convTitle ?? "conversation"}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, []);
+
   const handleCopyShareLink = useCallback(async () => {
     if (!shareToken) return;
     const url = `${window.location.origin}/share/${shareToken}`;
@@ -360,8 +383,10 @@ export function ConversationSidebar({
                   onCancelDelete={() => setDeletingId(null)}
                   onArchive={() => onArchiveConversation(conv.id, true)}
                   onShare={() => handleShare(conv.id)}
+                  onExport={() => handleExport(conv.id, conv.title)}
                   archiveLabel={t("sidebar.archiveConversation")}
                   shareLabel={t("share.shareTooltip")}
+                  exportLabel={t("sidebar.exportConversation")}
                   renameLabel={t("common.rename")}
                   deleteLabel={t("common.delete")}
                   deleteConfirmLabel={t("sidebar.deleteConfirm")}
@@ -409,8 +434,10 @@ export function ConversationSidebar({
                       onCancelDelete={() => setDeletingId(null)}
                       onArchive={() => onArchiveConversation(conv.id, false)}
                       onShare={() => handleShare(conv.id)}
+                      onExport={() => handleExport(conv.id, conv.title)}
                       archiveLabel={t("sidebar.unarchiveConversation")}
                       shareLabel={t("share.shareTooltip")}
+                      exportLabel={t("sidebar.exportConversation")}
                       renameLabel={t("common.rename")}
                       deleteLabel={t("common.delete")}
                       deleteConfirmLabel={t("sidebar.deleteConfirm")}

@@ -60,6 +60,7 @@
     "archives": "ארכיון",
     "archiveConversation": "העבר לארכיון",
     "unarchiveConversation": "שחזר מהארכיון",
+    "exportConversation": "ייצא כ-Markdown",
     "noArchivedConversations": "אין שיחות בארכיון",
     "relativeDate": {
       "now": "עכשיו",

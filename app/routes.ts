@@ -32,6 +32,7 @@ export default [
   route("api/cron/trial-reminders", "routes/api.cron.trial-reminders.ts"),
   route("api/feedback", "routes/api.feedback.ts"),
   route("api/conversations/:id/share", "routes/api.conversations.$id.share.ts"),
+  route("api/conversations/:id/export", "routes/api.conversations.$id.export.ts"),
   route("share/:token", "routes/share.$token.tsx"),
   route("admin", "routes/admin.tsx"),
   route("api/admin/custom-texts", "routes/api.admin.custom-texts.ts"),

@@ -24,7 +24,7 @@ interface IngestBody {
 }
 
 export async function action({ request, context }: Route.ActionArgs) {
-  if (request.method !== "POST") {
+  if (request.method !== "POST" && request.method !== "DELETE") {
     return Response.json({ error: "Method not allowed" }, { status: 405 });
   }
 
@@ -43,6 +43,42 @@ export async function action({ request, context }: Route.ActionArgs) {
   if (!adminSecret || providedSecret !== adminSecret) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // DELETE /api/admin/custom-texts?title=<title>
+  if (request.method === "DELETE") {
+    const title = url.searchParams.get("title");
+    if (!title) {
+      return Response.json({ error: "title query param is required" }, { status: 400 });
+    }
+
+    // Remove vectors from Vectorize if available
+    const vectorize = (env as Record<string, unknown>).VECTORIZE as {
+      deleteByIds: (ids: string[]) => Promise<void>;
+    } | null | undefined;
+
+    // Get all vectorize_ids for this title first
+    const { results } = await env.DB.prepare(
+      `SELECT vectorize_id FROM custom_texts WHERE title = ?`
+    ).bind(title).all<{ vectorize_id: string }>();
+
+    if (vectorize && results.length > 0) {
+      const ids = results.map((r) => r.vectorize_id);
+      try {
+        await vectorize.deleteByIds(ids);
+      } catch (err) {
+        console.error("[Admin] Vectorize delete failed:", err);
+        // Non-blocking — still delete from D1
+      }
+    }
+
+    const { meta } = await env.DB.prepare(
+      `DELETE FROM custom_texts WHERE title = ?`
+    ).bind(title).run();
+
+    return Response.json({ ok: true, deletedChunks: meta.changes ?? results.length });
+  }
+
+  // From here: POST
 
   let body: IngestBody;
   try {

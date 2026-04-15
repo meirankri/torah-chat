@@ -60,6 +60,7 @@
     "archives": "Archives",
     "archiveConversation": "Archive",
     "unarchiveConversation": "Unarchive",
+    "exportConversation": "Export as Markdown",
     "noArchivedConversations": "No archived conversations",
     "relativeDate": {
       "now": "just now",
