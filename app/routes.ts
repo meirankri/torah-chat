@@ -36,4 +36,7 @@ export default [
   route("share/:token", "routes/share.$token.tsx"),
   route("admin", "routes/admin.tsx"),
   route("api/admin/custom-texts", "routes/api.admin.custom-texts.ts"),
+  route("api/admin/static-questions", "routes/api.admin.static-questions.ts"),
+  route("questions/:slug", "routes/questions.$slug.tsx"),
+  route("questions", "routes/questions._index.tsx"),
 ] satisfies RouteConfig;
