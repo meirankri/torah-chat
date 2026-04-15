@@ -19,6 +19,7 @@ const MAX_HISTORY_MESSAGES = 10;
 const MAX_SEFARIA_SOURCES = 5;
 const SEFARIA_TIMEOUT_MS = 15_000;
 const GEMINI_EXTRACT_TIMEOUT_MS = 10_000;
+const LLM_TIMEOUT_MS = 30_000;
 
 function chatErrorResponse(code: ChatErrorCode, message: string, status: number) {
   return Response.json({ code, message }, { status });
@@ -308,8 +309,24 @@ export async function action({ request, context }: Route.ActionArgs) {
 
   let responseText: string;
   try {
-    responseText = await gemini.chat(systemPrompt, geminiHistory, content.trim());
+    responseText = await Promise.race([
+      gemini.chat(systemPrompt, geminiHistory, content.trim()),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error("LLM timeout")),
+          LLM_TIMEOUT_MS
+        )
+      ),
+    ]);
   } catch (geminiError) {
+    if (geminiError instanceof Error && geminiError.message === "LLM timeout") {
+      console.warn("[Chat API] Gemini chat timed out after", LLM_TIMEOUT_MS, "ms");
+      return chatErrorResponse(
+        "API_DOWN",
+        "La réponse prend plus de temps que prévu. Veuillez réessayer.",
+        503
+      );
+    }
     console.warn(
       "[Chat API] Gemini failed, trying Workers AI fallback with model:",
       workersAiModel,
