@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { signup, login, refreshTokens, forgotPassword, resetPasswordWithEmail, logout } from "../auth-service";
-import type { AuthDeps } from "../auth-service";
+import { signup, login, refreshTokens, forgotPassword, resetPasswordWithEmail, logout, googleOAuth } from "../auth-service";
+import type { AuthDeps, GoogleAuthDeps } from "../auth-service";
 import type { User } from "~/domain/entities/user";
 import type { RefreshToken } from "~/domain/entities/auth";
 import type { UserRepository } from "~/domain/repositories/user-repository";
@@ -257,6 +257,109 @@ describe("auth-service", () => {
     it("supprime les refresh tokens de l'utilisateur", async () => {
       await logout("user-1", deps);
       expect(deps.refreshTokenRepo.deleteByUserId).toHaveBeenCalledWith("user-1");
+    });
+  });
+
+  describe("refreshTokens", () => {
+    it("rejette si le token n'est pas en base", async () => {
+      // We can't easily generate a valid refresh token without a full round-trip,
+      // so test the "not found in DB" path using a valid JWT but missing in repo
+      const { createRefreshToken } = await import("~/application/services/token-service");
+      const refreshJwt = await createRefreshToken("user-1", TEST_SECRET);
+
+      vi.mocked(deps.refreshTokenRepo.findByTokenHash).mockResolvedValue(null);
+
+      await expect(refreshTokens(refreshJwt, deps)).rejects.toThrow("Refresh token invalide");
+    });
+
+    it("rejette si le token est expiré en base", async () => {
+      const { createRefreshToken } = await import("~/application/services/token-service");
+      const refreshJwt = await createRefreshToken("user-1", TEST_SECRET);
+
+      vi.mocked(deps.refreshTokenRepo.findByTokenHash).mockResolvedValue({
+        id: "rt-1",
+        userId: "user-1",
+        tokenHash: "hash",
+        expiresAt: new Date(Date.now() - 1000).toISOString(),
+        createdAt: new Date().toISOString(),
+      });
+
+      await expect(refreshTokens(refreshJwt, deps)).rejects.toThrow("Refresh token expiré");
+    });
+  });
+
+  describe("googleOAuth", () => {
+    function createGoogleDeps(): GoogleAuthDeps {
+      return {
+        ...deps,
+        googleClient: {
+          getAuthorizationUrl: vi.fn(),
+          exchangeCodeForToken: vi.fn().mockResolvedValue({ access_token: "gtoken" }),
+          getUserInfo: vi.fn().mockResolvedValue({
+            id: "google-uid",
+            email: "alice@gmail.com",
+            name: "Alice",
+            verified_email: true,
+          }),
+        },
+        googleClientId: "client-id",
+        googleClientSecret: "client-secret",
+      };
+    }
+
+    it("crée un nouvel utilisateur Google et retourne les tokens", async () => {
+      const googleDeps = createGoogleDeps();
+      const newUser = createMockUser({ email: "alice@gmail.com", provider: "google" });
+
+      vi.mocked(googleDeps.userRepo.findByProvider).mockResolvedValue(null);
+      vi.mocked(googleDeps.userRepo.findByEmail).mockResolvedValue(null);
+      vi.mocked(googleDeps.userRepo.create).mockResolvedValue(newUser);
+      vi.mocked(googleDeps.userRepo.update).mockResolvedValue(newUser);
+      vi.mocked(googleDeps.refreshTokenRepo.create).mockResolvedValue({
+        id: "rt-1", userId: "user-1", tokenHash: "h", expiresAt: new Date().toISOString(), createdAt: new Date().toISOString(),
+      });
+
+      const result = await googleOAuth("auth-code", "https://redirect.example.com", googleDeps);
+
+      expect(result.user.email).toBe("alice@gmail.com");
+      expect(result.tokens.accessToken).toBeDefined();
+      expect(googleDeps.userRepo.create).toHaveBeenCalled();
+    });
+
+    it("connecte un utilisateur Google existant sans créer de nouveau compte", async () => {
+      const googleDeps = createGoogleDeps();
+      const existingUser = createMockUser({ email: "alice@gmail.com", provider: "google" });
+
+      vi.mocked(googleDeps.userRepo.findByProvider).mockResolvedValue(existingUser);
+      vi.mocked(googleDeps.refreshTokenRepo.create).mockResolvedValue({
+        id: "rt-1", userId: "user-1", tokenHash: "h", expiresAt: new Date().toISOString(), createdAt: new Date().toISOString(),
+      });
+
+      const result = await googleOAuth("auth-code", "https://redirect.example.com", googleDeps);
+
+      expect(result.user.id).toBe("user-1");
+      expect(googleDeps.userRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("lie un compte Google à un compte email existant", async () => {
+      const googleDeps = createGoogleDeps();
+      const existingEmailUser = createMockUser({ email: "alice@gmail.com", provider: "email" });
+      const linkedUser = createMockUser({ email: "alice@gmail.com", provider: "google" });
+
+      vi.mocked(googleDeps.userRepo.findByProvider).mockResolvedValue(null);
+      vi.mocked(googleDeps.userRepo.findByEmail).mockResolvedValue(existingEmailUser);
+      vi.mocked(googleDeps.userRepo.update).mockResolvedValue(linkedUser);
+      vi.mocked(googleDeps.refreshTokenRepo.create).mockResolvedValue({
+        id: "rt-1", userId: "user-1", tokenHash: "h", expiresAt: new Date().toISOString(), createdAt: new Date().toISOString(),
+      });
+
+      await googleOAuth("auth-code", "https://redirect.example.com", googleDeps);
+
+      expect(googleDeps.userRepo.update).toHaveBeenCalledWith(
+        "user-1",
+        expect.objectContaining({ provider: "google", providerId: "google-uid" })
+      );
+      expect(googleDeps.userRepo.create).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { chunkText, generateEmbedding, retrieveCustomSources, DEFAULT_EMBEDDING_MODEL } from "../rag-service";
+import { chunkText, generateEmbedding, retrieveCustomSources, queryVectorize, fetchCustomChunks, DEFAULT_EMBEDDING_MODEL } from "../rag-service";
 
 describe("RAG Service", () => {
   describe("chunkText", () => {
@@ -114,6 +114,106 @@ describe("RAG Service", () => {
         "test question"
       );
       expect(result).toEqual([]);
+    });
+  });
+
+  describe("queryVectorize", () => {
+    it("retourne les matches Vectorize", async () => {
+      const mockAi = {
+        run: vi.fn().mockResolvedValueOnce({ data: [[0.1, 0.2, 0.3]] }),
+      };
+      const mockVectorize = {
+        query: vi.fn().mockResolvedValueOnce({
+          matches: [
+            { id: "chunk-1", score: 0.95 },
+            { id: "chunk-2", score: 0.87 },
+          ],
+        }),
+      };
+
+      const result = await queryVectorize(
+        mockVectorize as Parameters<typeof queryVectorize>[0],
+        mockAi as Parameters<typeof queryVectorize>[1],
+        "question Torah"
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result[0]?.id).toBe("chunk-1");
+      expect(mockVectorize.query).toHaveBeenCalledWith(
+        [0.1, 0.2, 0.3],
+        { topK: 3, returnMetadata: "none" }
+      );
+    });
+
+    it("retourne [] si Vectorize ne retourne aucun match", async () => {
+      const mockAi = {
+        run: vi.fn().mockResolvedValueOnce({ data: [[0.1, 0.2]] }),
+      };
+      const mockVectorize = {
+        query: vi.fn().mockResolvedValueOnce({ matches: undefined }),
+      };
+
+      const result = await queryVectorize(
+        mockVectorize as Parameters<typeof queryVectorize>[0],
+        mockAi as Parameters<typeof queryVectorize>[1],
+        "question"
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it("utilise le topK spécifié", async () => {
+      const mockAi = {
+        run: vi.fn().mockResolvedValueOnce({ data: [[0.5]] }),
+      };
+      const mockVectorize = {
+        query: vi.fn().mockResolvedValueOnce({ matches: [] }),
+      };
+
+      await queryVectorize(
+        mockVectorize as Parameters<typeof queryVectorize>[0],
+        mockAi as Parameters<typeof queryVectorize>[1],
+        "question",
+        10
+      );
+
+      expect(mockVectorize.query).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.objectContaining({ topK: 10 })
+      );
+    });
+  });
+
+  describe("fetchCustomChunks", () => {
+    it("retourne [] si vectorizeIds est vide", async () => {
+      const mockDb = { prepare: vi.fn() } as unknown as D1Database;
+      const result = await fetchCustomChunks(mockDb, []);
+      expect(result).toEqual([]);
+      expect(mockDb.prepare).not.toHaveBeenCalled();
+    });
+
+    it("retourne les CustomSources depuis D1", async () => {
+      const mockRows = [
+        { id: "c1", title: "Rambam", author: "Maïmonide", category: "Halakha", content: "Texte 1", chunk_index: 0 },
+        { id: "c2", title: "Torah", author: null, category: "Torah", content: "Texte 2", chunk_index: 1 },
+      ];
+      const mockBind = vi.fn().mockReturnThis();
+      const mockAll = vi.fn().mockResolvedValueOnce({ results: mockRows });
+      const mockDb = {
+        prepare: vi.fn().mockReturnValue({ bind: mockBind, all: mockAll }),
+      } as unknown as D1Database;
+
+      const result = await fetchCustomChunks(mockDb, ["vec-1", "vec-2"]);
+
+      expect(result).toHaveLength(2);
+      expect(result[0]?.id).toBe("c1");
+      expect(result[0]?.title).toBe("Rambam");
+      expect(result[0]?.author).toBe("Maïmonide");
+      expect(result[0]?.chunkIndex).toBe(0);
+      expect(result[1]?.author).toBeNull();
+      expect(mockDb.prepare).toHaveBeenCalledWith(
+        expect.stringContaining("custom_texts WHERE vectorize_id IN")
+      );
     });
   });
 });

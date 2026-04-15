@@ -276,4 +276,74 @@ describe("SefariaClient", () => {
       expect(sources).toHaveLength(5);
     });
   });
+
+  describe("resolveRef", () => {
+    it("retourne les completions pour un ref valide", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          is_ref: true,
+          completions: ["Berakhot 5a", "Berakhot 5b"],
+        }),
+      });
+
+      const client = new SefariaClient("https://www.sefaria.org", null, 86400);
+      const result = await client.resolveRef("Berakhot");
+
+      expect(result).toEqual(["Berakhot 5a", "Berakhot 5b"]);
+    });
+
+    it("retourne [] si la ref n'est pas valide (is_ref=false)", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ is_ref: false, completions: [] }),
+      });
+
+      const client = new SefariaClient("https://www.sefaria.org", null, 86400);
+      const result = await client.resolveRef("invalid-ref");
+
+      expect(result).toEqual([]);
+    });
+
+    it("retourne [] si l'API répond non-ok", async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
+
+      const client = new SefariaClient("https://www.sefaria.org", null, 86400);
+      const result = await client.resolveRef("unknown");
+
+      expect(result).toEqual([]);
+    });
+
+    it("retourne [] en cas d'erreur réseau", async () => {
+      mockFetch.mockRejectedValueOnce(new Error("Network error"));
+
+      const client = new SefariaClient("https://www.sefaria.org", null, 86400);
+      const result = await client.resolveRef("Berakhot");
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe("searchByKeywords", () => {
+    it("retourne [] si la recherche ne donne aucun résultat", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ hits: { hits: [] } }),
+      });
+
+      const client = new SefariaClient("https://www.sefaria.org", null, 86400);
+      const result = await client.searchByKeywords(["prière", "matin"]);
+
+      expect(result).toEqual([]);
+    });
+
+    it("retourne [] en cas d'erreur réseau", async () => {
+      mockFetch.mockRejectedValueOnce(new Error("Network error"));
+
+      const client = new SefariaClient("https://www.sefaria.org", null, 86400);
+      const result = await client.searchByKeywords(["Torah"]);
+
+      expect(result).toEqual([]);
+    });
+  });
 });
