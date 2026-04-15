@@ -216,4 +216,32 @@ describe("D1ConversationRepository", () => {
     const repo = new D1ConversationRepository(db);
     await expect(repo.saveFeedback("msg-1", "user-1", -1)).resolves.toBeUndefined();
   });
+
+  it("findArchivedByUserId retourne les conversations archivées", async () => {
+    const archivedRow = {
+      id: "conv-archived",
+      user_id: "user-1",
+      title: "Archived conversation",
+      archived: 1,
+      created_at: "2024-01-01T00:00:00Z",
+      updated_at: "2024-01-01T00:00:00Z",
+    };
+    mockAll.mockResolvedValueOnce({ results: [archivedRow] });
+
+    const repo = new D1ConversationRepository(db);
+    const result = await repo.findArchivedByUserId("user-1");
+    expect(result).toHaveLength(1);
+    expect(result[0]?.archived).toBe(true);
+    expect(db.prepare).toHaveBeenCalledWith(
+      expect.stringContaining("archived = 1")
+    );
+  });
+
+  it("findArchivedByUserId retourne un tableau vide si aucune conversation archivée", async () => {
+    mockAll.mockResolvedValueOnce({ results: [] });
+
+    const repo = new D1ConversationRepository(db);
+    const result = await repo.findArchivedByUserId("user-1");
+    expect(result).toEqual([]);
+  });
 });
