@@ -121,6 +121,13 @@
 - [x] GET /api/health — healthcheck DB (200 ok / 503 degraded, no-cache)
 - [x] Admin dashboard enrichi — section Contenu (textes RAG, chunks, pages SEO publiées)
 
+## Phase 18 — RAG multilingue + Infra
+
+- [x] Migration RAG : bge-base-en-v1.5 → bge-m3 (multilingue HE/FR/EN, configurable via EMBEDDING_MODEL)
+- [x] generateEmbedding / queryVectorize / retrieveCustomSources acceptent un model override
+- [x] POST /api/cron/reset-quotas — reset bulk mensuel des compteurs questions (CRON_SECRET)
+- [x] .env.example documenté avec EMBEDDING_MODEL
+
 ## Phase 10 — DevOps / Production
 - [x] GitHub Actions CI/CD (tests + build + deploy Cloudflare Workers sur push main)
 - [x] .env.example complet (toutes les variables, Apple Sign-In, CRON_SECRET, GEMINI_API_KEY)
