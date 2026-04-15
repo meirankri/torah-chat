@@ -162,4 +162,69 @@ describe("useConversations", () => {
 
     expect(result.current.activeConversationId).toBeNull();
   });
+
+  it("archive une conversation", async () => {
+    const { result } = renderHook(() => useConversations());
+    await act(async () => {});
+
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ success: true }), { status: 200 })
+    );
+
+    await act(async () => {
+      await result.current.archiveConversation("conv-1", true);
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/conversations/conv-1",
+      expect.objectContaining({ method: "PUT" })
+    );
+  });
+
+  it("génère un titre de conversation", async () => {
+    const { result } = renderHook(() => useConversations());
+    await act(async () => {});
+
+    mockFetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ title: "Question Torah générée" }), { status: 200 })
+    );
+
+    await act(async () => {
+      await result.current.generateTitle("conv-1");
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/conversations/conv-1/title",
+      expect.objectContaining({ method: "POST" })
+    );
+  });
+
+  it("charge les conversations archivées séparément", async () => {
+    mockFetch.mockReset();
+    const archivedConv = {
+      id: "conv-arch",
+      userId: "user-1",
+      title: "Archives Torah",
+      archived: true,
+      createdAt: "2024-01-01T00:00:00Z",
+      updatedAt: "2024-01-01T00:00:00Z",
+    };
+
+    mockFetch.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          conversations: mockConversations,
+          archived: [archivedConv],
+        }),
+        { status: 200 }
+      )
+    );
+
+    const { result } = renderHook(() => useConversations());
+    await act(async () => {});
+
+    expect(result.current.conversations).toHaveLength(2);
+    expect(result.current.archivedConversations).toHaveLength(1);
+    expect(result.current.archivedConversations[0]?.id).toBe("conv-arch");
+  });
 });

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { signup, login, refreshTokens, forgotPassword, resetPasswordWithEmail, logout, googleOAuth } from "../auth-service";
-import type { AuthDeps, GoogleAuthDeps } from "../auth-service";
+import { signup, login, refreshTokens, forgotPassword, resetPasswordWithEmail, logout, googleOAuth, appleOAuth } from "../auth-service";
+import type { AuthDeps, GoogleAuthDeps, AppleAuthDeps } from "../auth-service";
 import type { User } from "~/domain/entities/user";
 import type { RefreshToken } from "~/domain/entities/auth";
 import type { UserRepository } from "~/domain/repositories/user-repository";
@@ -360,6 +360,67 @@ describe("auth-service", () => {
         expect.objectContaining({ provider: "google", providerId: "google-uid" })
       );
       expect(googleDeps.userRepo.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("appleOAuth", () => {
+    function buildFakeJwt(payload: Record<string, unknown>): string {
+      const encoded = btoa(JSON.stringify(payload))
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+      return `eyJhbGciOiJFUzI1NiJ9.${encoded}.sig`;
+    }
+
+    function createAppleDeps(): AppleAuthDeps {
+      return {
+        ...deps,
+        appleClient: {
+          getAuthorizationUrl: vi.fn(),
+          exchangeCodeForToken: vi.fn(),
+          getUserFromIdToken: vi.fn().mockReturnValue({
+            id: "apple-uid",
+            email: "bob@appleid.com",
+            name: "Bob",
+          }),
+        },
+      };
+    }
+
+    it("crée un nouvel utilisateur Apple via id_token direct", async () => {
+      const appleDeps = createAppleDeps();
+      const newUser = createMockUser({ email: "bob@appleid.com", provider: "apple" });
+
+      vi.mocked(appleDeps.userRepo.findByProvider).mockResolvedValue(null);
+      vi.mocked(appleDeps.userRepo.findByEmail).mockResolvedValue(null);
+      vi.mocked(appleDeps.userRepo.create).mockResolvedValue(newUser);
+      vi.mocked(appleDeps.userRepo.update).mockResolvedValue(newUser);
+      vi.mocked(appleDeps.refreshTokenRepo.create).mockResolvedValue({
+        id: "rt-1", userId: "user-1", tokenHash: "h", expiresAt: new Date().toISOString(), createdAt: new Date().toISOString(),
+      });
+
+      const fakeIdToken = buildFakeJwt({ sub: "apple-uid", email: "bob@appleid.com" });
+      const result = await appleOAuth("", "", "Bob", undefined, fakeIdToken, appleDeps);
+
+      expect(result.user.email).toBe("bob@appleid.com");
+      expect(appleDeps.userRepo.create).toHaveBeenCalled();
+      expect(appleDeps.appleClient.exchangeCodeForToken).not.toHaveBeenCalled();
+    });
+
+    it("connecte un utilisateur Apple existant", async () => {
+      const appleDeps = createAppleDeps();
+      const existingUser = createMockUser({ email: "bob@appleid.com", provider: "apple" });
+
+      vi.mocked(appleDeps.userRepo.findByProvider).mockResolvedValue(existingUser);
+      vi.mocked(appleDeps.refreshTokenRepo.create).mockResolvedValue({
+        id: "rt-1", userId: "user-1", tokenHash: "h", expiresAt: new Date().toISOString(), createdAt: new Date().toISOString(),
+      });
+
+      const fakeIdToken = buildFakeJwt({ sub: "apple-uid", email: "bob@appleid.com" });
+      const result = await appleOAuth("", "", undefined, undefined, fakeIdToken, appleDeps);
+
+      expect(result.user.id).toBe("user-1");
+      expect(appleDeps.userRepo.create).not.toHaveBeenCalled();
     });
   });
 });

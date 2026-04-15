@@ -126,4 +126,59 @@ describe("useChat", () => {
 
     expect(result.current.messages).toHaveLength(0);
   });
+
+  it("stopGeneration met isLoading à false", async () => {
+    const { result } = renderHook(() => useChat());
+
+    // stopGeneration ne plante pas même si aucune requête en cours
+    act(() => {
+      result.current.stopGeneration();
+    });
+
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  it("regenerateLastResponse ne fait rien si pas de message précédent", async () => {
+    const { result } = renderHook(() => useChat());
+
+    await act(async () => {
+      await result.current.regenerateLastResponse();
+    });
+
+    // Aucun fetch déclenché (pas de message précédent)
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("regenerateLastResponse renvoie le dernier message utilisateur", async () => {
+    // First send a message
+    mockFetch.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ response: "Première réponse", sources: [] }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+    // Then regenerate
+    mockFetch.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ response: "Réponse régénérée", sources: [] }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+
+    const { result } = renderHook(() => useChat());
+
+    await act(async () => {
+      await result.current.sendMessage("Quelle est la signification de Shabbat ?");
+    });
+
+    const messagesAfterFirst = result.current.messages.length;
+    expect(messagesAfterFirst).toBeGreaterThan(0);
+
+    await act(async () => {
+      await result.current.regenerateLastResponse();
+    });
+
+    // Should have called fetch twice
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
 });
