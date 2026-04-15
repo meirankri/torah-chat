@@ -16,7 +16,14 @@ export async function loader({ request, context }: Route.LoaderArgs) {
   }
 
   const repo = new D1ConversationRepository(env.DB);
+  const url = new URL(request.url);
+  const includeArchived = url.searchParams.get("archived") === "true";
+
   const conversations = await repo.findByUserId(userId);
+  if (includeArchived) {
+    const archived = await repo.findArchivedByUserId(userId);
+    return Response.json({ conversations, archived });
+  }
 
   return Response.json({ conversations });
 }

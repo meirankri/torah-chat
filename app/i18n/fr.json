@@ -57,6 +57,10 @@
     "deleteConfirm": "Supprimer cette conversation ?",
     "searchPlaceholder": "Rechercher...",
     "noSearchResults": "Aucune conversation trouvée",
+    "archives": "Archives",
+    "archiveConversation": "Archiver",
+    "unarchiveConversation": "Désarchiver",
+    "noArchivedConversations": "Aucune conversation archivée",
     "relativeDate": {
       "now": "maintenant",
       "minutesAgo": "il y a {{count}}min",

@@ -23,11 +23,13 @@ const mockConversations = [
 
 const defaultProps = {
   conversations: mockConversations,
+  archivedConversations: [],
   activeConversationId: null,
   onSelectConversation: vi.fn(),
   onNewConversation: vi.fn(),
   onDeleteConversation: vi.fn(),
   onRenameConversation: vi.fn(),
+  onArchiveConversation: vi.fn(),
   isOpen: true,
   onClose: vi.fn(),
 };
@@ -100,5 +102,28 @@ describe("ConversationSidebar", () => {
   it("n'affiche pas la recherche quand il n'y a pas de conversations", () => {
     render(<ConversationSidebar {...defaultProps} conversations={[]} />);
     expect(screen.queryByRole("searchbox")).toBeNull();
+  });
+
+  it("appelle onArchiveConversation au clic sur le bouton archiver", () => {
+    const onArchive = vi.fn();
+    render(<ConversationSidebar {...defaultProps} onArchiveConversation={onArchive} />);
+    const archiveButtons = screen.getAllByTitle("Archiver");
+    fireEvent.click(archiveButtons[0]!);
+    expect(onArchive).toHaveBeenCalledWith("conv-1", true);
+  });
+
+  it("affiche la section archives quand il y a des conversations archivées", () => {
+    const archivedConvs = [
+      {
+        id: "conv-3",
+        userId: "user-1",
+        title: "Archived conversation",
+        archived: true,
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-01T00:00:00Z",
+      },
+    ];
+    render(<ConversationSidebar {...defaultProps} archivedConversations={archivedConvs} />);
+    expect(screen.getByText(/Archives/)).toBeDefined();
   });
 });

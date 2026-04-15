@@ -4,6 +4,7 @@ import type { MessageSource } from "../entities/source";
 export interface ConversationRepository {
   findById(id: string): Promise<Conversation | null>;
   findByUserId(userId: string): Promise<Conversation[]>;
+  findArchivedByUserId(userId: string): Promise<Conversation[]>;
   create(userId: string, title?: string): Promise<Conversation>;
   update(id: string, data: Partial<Conversation>): Promise<Conversation>;
   delete(id: string): Promise<void>;

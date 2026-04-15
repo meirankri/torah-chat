@@ -38,11 +38,13 @@ export default function Chat() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const {
     conversations,
+    archivedConversations,
     activeConversationId,
     loadConversations,
     selectConversation,
     deleteConversation,
     renameConversation,
+    archiveConversation,
     setActiveConversationId,
     generateTitle,
   } = useConversations();
@@ -134,11 +136,13 @@ export default function Chat() {
       {/* Sidebar */}
       <ConversationSidebar
         conversations={conversations}
+        archivedConversations={archivedConversations}
         activeConversationId={activeConversationId}
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
         onDeleteConversation={deleteConversation}
         onRenameConversation={renameConversation}
+        onArchiveConversation={archiveConversation}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />

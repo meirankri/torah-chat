@@ -57,6 +57,10 @@
     "deleteConfirm": "למחוק את השיחה הזאת?",
     "searchPlaceholder": "חיפוש...",
     "noSearchResults": "לא נמצאו שיחות",
+    "archives": "ארכיון",
+    "archiveConversation": "העבר לארכיון",
+    "unarchiveConversation": "שחזר מהארכיון",
+    "noArchivedConversations": "אין שיחות בארכיון",
     "relativeDate": {
       "now": "עכשיו",
       "minutesAgo": "לפני {{count}} דקות",

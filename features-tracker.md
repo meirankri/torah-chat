@@ -47,6 +47,7 @@
 - [x] Renommer une conversation (édition inline)
 - [x] Contexte conversationnel (N derniers messages envoyés au LLM, configurable)
 - [x] Bouton "Nouvelle conversation"
+- [x] Archiver une conversation (section Archives repliable dans la sidebar, désarchivage)
 
 ## Phase 6 — P0 Multilingue (i18n)
 - [x] Setup i18n avec fichiers JSON (fr.json, en.json, he.json)

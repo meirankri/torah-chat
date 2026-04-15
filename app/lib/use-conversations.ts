@@ -3,6 +3,7 @@ import type { Conversation } from "~/domain/entities/conversation";
 
 interface ConversationsApiResponse {
   conversations: Conversation[];
+  archived?: Conversation[];
 }
 
 interface ConversationDetailResponse {
@@ -33,6 +34,7 @@ interface ConversationDetailResponse {
 
 interface UseConversationsReturn {
   conversations: Conversation[];
+  archivedConversations: Conversation[];
   activeConversationId: string | null;
   isLoadingList: boolean;
   loadConversations: () => Promise<void>;
@@ -40,22 +42,25 @@ interface UseConversationsReturn {
   selectConversation: (id: string) => Promise<ConversationDetailResponse | null>;
   deleteConversation: (id: string) => Promise<void>;
   renameConversation: (id: string, title: string) => Promise<void>;
+  archiveConversation: (id: string, archived: boolean) => Promise<void>;
   setActiveConversationId: (id: string | null) => void;
   generateTitle: (conversationId: string) => Promise<void>;
 }
 
 export function useConversations(): UseConversationsReturn {
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [archivedConversations, setArchivedConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [isLoadingList, setIsLoadingList] = useState(false);
 
   const loadConversations = useCallback(async () => {
     setIsLoadingList(true);
     try {
-      const response = await fetch("/api/conversations");
+      const response = await fetch("/api/conversations?archived=true");
       if (response.ok) {
         const data = (await response.json()) as ConversationsApiResponse;
         setConversations(data.conversations);
+        setArchivedConversations(data.archived ?? []);
       }
     } catch (err) {
       console.error("Failed to load conversations:", err);
@@ -113,6 +118,41 @@ export function useConversations(): UseConversationsReturn {
     }
   }, []);
 
+  const archiveConversation = useCallback(
+    async (id: string, archived: boolean) => {
+      const response = await fetch(`/api/conversations/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived }),
+      });
+      if (response.ok) {
+        if (archived) {
+          // Move from active to archived list
+          setConversations((prev) => {
+            const conv = prev.find((c) => c.id === id);
+            if (conv) {
+              setArchivedConversations((arc) => [{ ...conv, archived: true }, ...arc]);
+            }
+            return prev.filter((c) => c.id !== id);
+          });
+          if (activeConversationId === id) {
+            setActiveConversationId(null);
+          }
+        } else {
+          // Move from archived to active list
+          setArchivedConversations((prev) => {
+            const conv = prev.find((c) => c.id === id);
+            if (conv) {
+              setConversations((active) => [{ ...conv, archived: false }, ...active]);
+            }
+            return prev.filter((c) => c.id !== id);
+          });
+        }
+      }
+    },
+    [activeConversationId]
+  );
+
   const generateTitle = useCallback(async (conversationId: string) => {
     try {
       const response = await fetch(`/api/conversations/${conversationId}/title`, {
@@ -137,6 +177,7 @@ export function useConversations(): UseConversationsReturn {
 
   return {
     conversations,
+    archivedConversations,
     activeConversationId,
     isLoadingList,
     loadConversations,
@@ -144,6 +185,7 @@ export function useConversations(): UseConversationsReturn {
     selectConversation,
     deleteConversation,
     renameConversation,
+    archiveConversation,
     setActiveConversationId,
     generateTitle,
   };

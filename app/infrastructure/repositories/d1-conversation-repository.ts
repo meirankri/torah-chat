@@ -95,6 +95,16 @@ export class D1ConversationRepository implements ConversationRepository {
     return results.map(rowToConversation);
   }
 
+  async findArchivedByUserId(userId: string): Promise<Conversation[]> {
+    const { results } = await this.db
+      .prepare(
+        "SELECT * FROM conversations WHERE user_id = ? AND archived = 1 ORDER BY updated_at DESC"
+      )
+      .bind(userId)
+      .all<D1ConversationRow>();
+    return results.map(rowToConversation);
+  }
+
   async create(userId: string, title?: string): Promise<Conversation> {
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
