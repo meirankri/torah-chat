@@ -5,6 +5,7 @@ import {
   ensureStripeCustomer,
   handleCheckoutCompleted,
   handleSubscriptionChange,
+  handleInvoicePaid,
 } from "../stripe-service";
 import type { UserRepository } from "~/domain/repositories/user-repository";
 import type { User } from "~/domain/entities/user";
@@ -248,5 +249,57 @@ describe("handleSubscriptionChange", () => {
     await handleSubscriptionChange(subscription, { stripe, userRepo, appUrl: "http://localhost" }, PLAN_CONFIG);
 
     expect(userRepo.update).toHaveBeenCalledWith("user-1", expect.objectContaining({ plan: "expired" }));
+  });
+});
+
+describe("handleInvoicePaid", () => {
+  function makeUserRepo(overrides = {}) {
+    return {
+      findById: vi.fn(),
+      findByEmail: vi.fn(),
+      findByProvider: vi.fn(),
+      findByStripeCustomerId: vi.fn().mockResolvedValue(makeUser({ id: "user-1" })),
+      findUsersWithTrialEndingOn: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn().mockResolvedValue(makeUser()),
+      incrementQuestions: vi.fn(),
+      resetMonthlyQuestions: vi.fn().mockResolvedValue(undefined),
+      ...overrides,
+    } as unknown as UserRepository;
+  }
+
+  it("trouve l'utilisateur par customerId et réinitialise les questions mensuelles", async () => {
+    const invoice = { customer: "cus_1" } as unknown as Stripe.Invoice;
+    const userRepo = makeUserRepo();
+    const stripe = {} as unknown as Stripe;
+
+    await handleInvoicePaid(invoice, { stripe, userRepo, appUrl: "http://localhost" });
+
+    expect(userRepo.findByStripeCustomerId).toHaveBeenCalledWith("cus_1");
+    expect(userRepo.resetMonthlyQuestions).toHaveBeenCalledWith("user-1");
+  });
+
+  it("ne fait rien si aucun utilisateur trouvé pour le customerId", async () => {
+    const invoice = { customer: "cus_unknown" } as unknown as Stripe.Invoice;
+    const userRepo = makeUserRepo({
+      findByStripeCustomerId: vi.fn().mockResolvedValue(null),
+    });
+    const stripe = {} as unknown as Stripe;
+
+    await handleInvoicePaid(invoice, { stripe, userRepo, appUrl: "http://localhost" });
+
+    expect(userRepo.findByStripeCustomerId).toHaveBeenCalledWith("cus_unknown");
+    expect(userRepo.resetMonthlyQuestions).not.toHaveBeenCalled();
+  });
+
+  it("gère invoice.customer comme un objet (pas une string)", async () => {
+    const invoice = { customer: { id: "cus_obj" } } as unknown as Stripe.Invoice;
+    const userRepo = makeUserRepo();
+    const stripe = {} as unknown as Stripe;
+
+    await handleInvoicePaid(invoice, { stripe, userRepo, appUrl: "http://localhost" });
+
+    expect(userRepo.findByStripeCustomerId).toHaveBeenCalledWith("cus_obj");
+    expect(userRepo.resetMonthlyQuestions).toHaveBeenCalledWith("user-1");
   });
 });

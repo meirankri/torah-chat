@@ -4,6 +4,7 @@ import { D1UserRepository } from "~/infrastructure/repositories/d1-user-reposito
 import {
   handleCheckoutCompleted,
   handleSubscriptionChange,
+  handleInvoicePaid,
 } from "~/application/services/stripe-service";
 import type Stripe from "stripe";
 
@@ -68,6 +69,10 @@ export async function action({ request, context }: Route.ActionArgs) {
           deps,
           planConfig
         );
+        break;
+
+      case "invoice.paid":
+        await handleInvoicePaid(event.data.object as Stripe.Invoice, deps);
         break;
 
       case "invoice.payment_failed":

@@ -185,6 +185,34 @@ export async function handleSubscriptionChange(
   await applySubscriptionUpdate(userId, subscription, deps, planConfig);
 }
 
+/**
+ * Handles invoice.paid event.
+ * Resets the monthly question counter for the user.
+ */
+export async function handleInvoicePaid(
+  invoice: Stripe.Invoice,
+  deps: StripeDeps
+): Promise<void> {
+  const customerId =
+    typeof invoice.customer === "string"
+      ? invoice.customer
+      : invoice.customer?.id;
+
+  if (!customerId) {
+    console.error("[Stripe] invoice.paid: missing customer id");
+    return;
+  }
+
+  const user = await deps.userRepo.findByStripeCustomerId(customerId);
+  if (!user) {
+    console.log(`[Stripe] invoice.paid: no user found for customer ${customerId}`);
+    return;
+  }
+
+  await deps.userRepo.resetMonthlyQuestions(user.id);
+  console.log(`[Stripe] invoice.paid: reset monthly questions for user ${user.id}`);
+}
+
 async function applySubscriptionUpdate(
   userId: string,
   subscription: Stripe.Subscription,
