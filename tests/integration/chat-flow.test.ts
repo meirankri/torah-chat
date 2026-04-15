@@ -75,12 +75,13 @@ describe("Chat flow integration", () => {
   });
 
   describe("Workers AI fallback", () => {
-    it("utilise 70B pour free_trial (pas de modèle dégradé)", () => {
+    it("utilise le modèle trial (8B) pour free_trial", () => {
       const env = {
+        WORKERS_AI_MODEL_TRIAL: "@cf/meta/llama-3.1-8b-instruct",
         WORKERS_AI_MODEL_STANDARD: "@cf/meta/llama-3.1-70b-instruct",
         WORKERS_AI_MODEL_PREMIUM: "@cf/meta/llama-3.1-70b-instruct",
       };
-      expect(getModelForPlan("free_trial", env)).toBe("@cf/meta/llama-3.1-70b-instruct");
+      expect(getModelForPlan("free_trial", env)).toBe("@cf/meta/llama-3.1-8b-instruct");
     });
 
     it("utilise 70B pour le plan standard", () => {
@@ -99,9 +100,9 @@ describe("Chat flow integration", () => {
       expect(getModelForPlan("premium", env)).toBe("@cf/meta/llama-3.1-70b-instruct");
     });
 
-    it("utilise le modèle par défaut 70B si la variable d'env est absente", () => {
+    it("free_trial utilise 8B par défaut, standard utilise 70B par défaut", () => {
       const env = {};
-      expect(getModelForPlan("free_trial", env)).toBe("@cf/meta/llama-3.1-70b-instruct");
+      expect(getModelForPlan("free_trial", env)).toBe("@cf/meta/llama-3.1-8b-instruct");
       expect(getModelForPlan("standard", env)).toBe("@cf/meta/llama-3.1-70b-instruct");
     });
 

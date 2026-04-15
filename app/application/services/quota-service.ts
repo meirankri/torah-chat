@@ -46,14 +46,14 @@ export function getModelForPlan(
 ): string {
   switch (plan) {
     case "premium":
-      // OpenAI GPT-4o for premium (used in dedicated premium LLM path)
       return env.WORKERS_AI_MODEL_PREMIUM ?? env.WORKERS_AI_MODEL_STANDARD ?? "@cf/meta/llama-3.1-70b-instruct";
     case "standard":
+      return env.WORKERS_AI_MODEL_STANDARD ?? "@cf/meta/llama-3.1-70b-instruct";
     case "free_trial":
     case "expired":
     default:
-      // 70B for everyone on Workers AI fallback
-      return env.WORKERS_AI_MODEL_STANDARD ?? "@cf/meta/llama-3.1-70b-instruct";
+      // Lighter model for trial/expired — falls back to standard if not configured
+      return env.WORKERS_AI_MODEL_TRIAL ?? env.WORKERS_AI_MODEL_STANDARD ?? "@cf/meta/llama-3.1-8b-instruct";
   }
 }
 

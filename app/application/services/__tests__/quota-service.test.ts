@@ -73,10 +73,16 @@ describe("getModelForPlan", () => {
   const env = {
     WORKERS_AI_MODEL_STANDARD: "standard-model",
     WORKERS_AI_MODEL_PREMIUM: "premium-model",
+    WORKERS_AI_MODEL_TRIAL: "trial-model",
   };
 
-  it("free_trial → standard model (70B, pas de modèle dégradé)", () => {
-    expect(getModelForPlan("free_trial", env)).toBe("standard-model");
+  it("free_trial → trial model (8B léger)", () => {
+    expect(getModelForPlan("free_trial", env)).toBe("trial-model");
+  });
+
+  it("free_trial → standard model si TRIAL absent", () => {
+    const envNoTrial = { WORKERS_AI_MODEL_STANDARD: "standard-model", WORKERS_AI_MODEL_PREMIUM: "premium-model" };
+    expect(getModelForPlan("free_trial", envNoTrial)).toBe("standard-model");
   });
 
   it("standard → standard model", () => {
@@ -87,12 +93,16 @@ describe("getModelForPlan", () => {
     expect(getModelForPlan("premium", env)).toBe("premium-model");
   });
 
-  it("expired → standard model", () => {
-    expect(getModelForPlan("expired", env)).toBe("standard-model");
+  it("expired → trial model (même modèle léger que le trial)", () => {
+    expect(getModelForPlan("expired", env)).toBe("trial-model");
   });
 
-  it("fallback sur llama-3.1-70b si WORKERS_AI_MODEL_STANDARD absent", () => {
+  it("fallback sur llama-3.1-70b si WORKERS_AI_MODEL_STANDARD absent (standard)", () => {
     expect(getModelForPlan("standard", {})).toBe("@cf/meta/llama-3.1-70b-instruct");
+  });
+
+  it("fallback sur llama-3.1-8b si WORKERS_AI_MODEL_TRIAL et STANDARD absents (free_trial)", () => {
+    expect(getModelForPlan("free_trial", {})).toBe("@cf/meta/llama-3.1-8b-instruct");
   });
 
   it("fallback sur llama-3.1-70b pour premium si WORKERS_AI_MODEL_PREMIUM absent", () => {
