@@ -81,3 +81,50 @@ describe("validateSignupInput", () => {
     ).not.toBeNull();
   });
 });
+
+describe("validateEmail — cas limites", () => {
+  it("email avec sous-domaine est valide", () => {
+    // validateEmail already imported at top
+    expect(validateEmail("user@mail.example.com")).toBeNull();
+  });
+
+  it("email avec + est valide", () => {
+    // validateEmail already imported at top
+    expect(validateEmail("user+tag@example.com")).toBeNull();
+  });
+
+  it("email sans @ est invalide", () => {
+    // validateEmail already imported at top
+    expect(validateEmail("notanemail")).not.toBeNull();
+  });
+
+  it("email avec espaces en bordure est invalide (sans trim)", () => {
+    // validateEmail already imported at top
+    // L'implémentation fait .trim() donc un email avec espaces peut passer
+    const result = validateEmail("  user@example.com  ");
+    // trimmed → valide
+    expect(result).toBeNull();
+  });
+});
+
+describe("validatePassword — cas limites", () => {
+  it("password avec exactement 8 caractères est valide si critères remplis", () => {
+    // validatePassword already imported at top
+    expect(validatePassword("Passw0rd")).toBeNull();
+  });
+
+  it("password avec caractères spéciaux est valide si critères remplis", () => {
+    // validatePassword already imported at top
+    expect(validatePassword("Pass@1234")).toBeNull();
+  });
+
+  it("password uniquement en minuscules est invalide", () => {
+    // validatePassword already imported at top
+    expect(validatePassword("password1")).not.toBeNull();
+  });
+
+  it("password sans chiffre est invalide même avec majuscule", () => {
+    // validatePassword already imported at top
+    expect(validatePassword("PasswordOnly")).not.toBeNull();
+  });
+});

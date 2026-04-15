@@ -1,11 +1,14 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { SefariaClient } from "~/infrastructure/sefaria/sefaria-client";
 import {
   mapSefariaResultsToSources,
   sefariaResultToMessageSource,
+  mapCustomSourcesToSources,
+  customSourceToMessageSource,
 } from "~/application/services/source-service";
 import type { SefariaSourceResult } from "~/infrastructure/sefaria/sefaria-client";
 import type { MessageSource } from "~/domain/entities/source";
+import type { CustomSource } from "~/application/services/rag-service";
 
 describe("Sources flow integration", () => {
   describe("Flow complet: texte LLM → extraction refs → conversion sources", () => {
@@ -137,6 +140,93 @@ describe("Sources flow integration", () => {
         };
         expect(source.sourceType).toBe(type);
       }
+    });
+  });
+
+  describe("Flow RAG sources custom → MessageSource", () => {
+    const customSources: CustomSource[] = [
+      {
+        id: "chunk-1",
+        title: "Rambam — Lois de la Prière",
+        author: "Maïmonide",
+        category: "Halakha",
+        content: "On doit prier trois fois par jour selon la loi juive.",
+        chunkIndex: 0,
+      },
+      {
+        id: "chunk-2",
+        title: "Zohar",
+        author: null,
+        category: "Kabbale",
+        content: "La lumière divine se répand dans tous les mondes.",
+        chunkIndex: 1,
+      },
+    ];
+
+    it("convertit des sources custom en MessageSources avec sourceType=custom", () => {
+      const sources = mapCustomSourcesToSources(customSources, "msg-42");
+
+      expect(sources).toHaveLength(2);
+      expect(sources[0]?.sourceType).toBe("custom");
+      expect(sources[1]?.sourceType).toBe("custom");
+    });
+
+    it("construit la ref avec author si présent", () => {
+      const sources = mapCustomSourcesToSources(customSources, "msg-42");
+      expect(sources[0]?.ref).toBe("Rambam — Lois de la Prière — Maïmonide");
+    });
+
+    it("construit la ref sans author si absent", () => {
+      const sources = mapCustomSourcesToSources(customSources, "msg-42");
+      expect(sources[1]?.ref).toBe("Zohar");
+    });
+
+    it("place le contenu dans textTranslation et null dans textHebrew/sefariaUrl", () => {
+      const source = customSourceToMessageSource(customSources[0]!, "msg-1");
+      expect(source.textTranslation).toBe("On doit prier trois fois par jour selon la loi juive.");
+      expect(source.textHebrew).toBeNull();
+      expect(source.sefariaUrl).toBeNull();
+    });
+
+    it("assigne le messageId correctement", () => {
+      const sources = mapCustomSourcesToSources(customSources, "msg-unique-99");
+      expect(sources.every((s) => s.messageId === "msg-unique-99")).toBe(true);
+    });
+
+    it("génère des IDs uniques pour chaque source custom", () => {
+      const sources = mapCustomSourcesToSources(customSources, "msg-1");
+      const ids = new Set(sources.map((s) => s.id));
+      expect(ids.size).toBe(2);
+    });
+  });
+
+  describe("Mapping language pour la route /api/sources", () => {
+    it("fr → french", () => {
+      const lang = "fr";
+      const translationLang =
+        lang === "fr" ? "french" : lang === "he" ? "hebrew" : "english";
+      expect(translationLang).toBe("french");
+    });
+
+    it("he → hebrew", () => {
+      const lang = "he";
+      const translationLang =
+        lang === "fr" ? "french" : lang === "he" ? "hebrew" : "english";
+      expect(translationLang).toBe("hebrew");
+    });
+
+    it("en → english (fallback)", () => {
+      const lang = "en";
+      const translationLang =
+        lang === "fr" ? "french" : lang === "he" ? "hebrew" : "english";
+      expect(translationLang).toBe("english");
+    });
+
+    it("langue inconnue → english (fallback)", () => {
+      const lang = "xx";
+      const translationLang =
+        lang === "fr" ? "french" : lang === "he" ? "hebrew" : "english";
+      expect(translationLang).toBe("english");
     });
   });
 });

@@ -43,4 +43,41 @@ describe("i18n language switch integration", () => {
     const result = i18n.t("unknown.key.that.does.not.exist");
     expect(typeof result).toBe("string");
   });
+
+  it("traduit les clés de navigation en français", async () => {
+    await i18n.changeLanguage("fr");
+    expect(i18n.t("nav.profile")).toBeDefined();
+    expect(i18n.t("nav.chat")).toBeDefined();
+    expect(i18n.t("nav.pricing")).toBeDefined();
+  });
+
+  it("traduit les clés d'erreurs dans les 3 langues", async () => {
+    for (const lang of ["fr", "en", "he"]) {
+      await i18n.changeLanguage(lang);
+      expect(typeof i18n.t("errors.quotaExceeded")).toBe("string");
+      expect(typeof i18n.t("errors.apiDown")).toBe("string");
+      expect(i18n.t("errors.quotaExceeded")).not.toBe("");
+    }
+  });
+
+  it("traduit les clés chat dans les 3 langues", async () => {
+    for (const lang of ["fr", "en", "he"]) {
+      await i18n.changeLanguage(lang);
+      expect(typeof i18n.t("chat.title")).toBe("string");
+      expect(i18n.t("chat.title")).not.toBe("");
+    }
+  });
+
+  it("traduit common.send en hébreu avec direction RTL", async () => {
+    await i18n.changeLanguage("he");
+    const send = i18n.t("common.send");
+    expect(send).toBe("שלח");
+  });
+
+  it("l'interpolation count fonctionne en hébreu", async () => {
+    await i18n.changeLanguage("he");
+    const result = i18n.t("sidebar.relativeDate.minutesAgo", { count: 3 });
+    expect(typeof result).toBe("string");
+    expect(result).not.toBe("");
+  });
 });
