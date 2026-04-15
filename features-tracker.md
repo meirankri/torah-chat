@@ -128,6 +128,12 @@
 - [x] POST /api/cron/reset-quotas — reset bulk mensuel des compteurs questions (CRON_SECRET)
 - [x] .env.example documenté avec EMBEDDING_MODEL
 
+## Phase 19 — Crons Cloudflare + Config
+
+- [x] Handler scheduled() dans workers/app.ts — dispatch trial-reminders (0 9 * * *) et reset-quotas (0 0 1 * *)
+- [x] wrangler.jsonc triggers.crons configurés + vars APP_VERSION, PLAN_PREMIUM_QUESTIONS_LIMIT, EMBEDDING_MODEL
+- [x] PLAN_PREMIUM_QUESTIONS_LIMIT lu depuis env dans api.chat.ts (était hardcodé)
+
 ## Phase 10 — DevOps / Production
 - [x] GitHub Actions CI/CD (tests + build + deploy Cloudflare Workers sur push main)
 - [x] .env.example complet (toutes les variables, Apple Sign-In, CRON_SECRET, GEMINI_API_KEY)
