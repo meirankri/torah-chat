@@ -3,6 +3,8 @@ import {
   subscriptionStatusToPlan,
   resolvePlanFromPrice,
   ensureStripeCustomer,
+  handleCheckoutCompleted,
+  handleSubscriptionChange,
 } from "../stripe-service";
 import type { UserRepository } from "~/domain/repositories/user-repository";
 import type { User } from "~/domain/entities/user";
@@ -116,5 +118,135 @@ describe("ensureStripeCustomer", () => {
       name: "Test",
     });
     expect(repo.update).toHaveBeenCalledWith("user-1", { stripeCustomerId: "cus_new" });
+  });
+});
+
+describe("handleCheckoutCompleted", () => {
+  function makeUserRepo(overrides = {}) {
+    return {
+      findById: vi.fn().mockResolvedValue(makeUser()),
+      findByEmail: vi.fn(),
+      findByProvider: vi.fn(),
+      findByStripeCustomerId: vi.fn(),
+      findUsersWithTrialEndingOn: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn().mockResolvedValue(makeUser()),
+      incrementQuestions: vi.fn(),
+      resetMonthlyQuestions: vi.fn(),
+      ...overrides,
+    } as unknown as UserRepository;
+  }
+
+  it("ne fait rien si userId absent des metadata", async () => {
+    const session = { metadata: {}, subscription: "sub_1", customer: "cus_1" } as unknown as Stripe.CheckoutSession;
+    const userRepo = makeUserRepo();
+    const stripe = { subscriptions: { retrieve: vi.fn() } } as unknown as Stripe;
+
+    await handleCheckoutCompleted(session, { stripe, userRepo, appUrl: "http://localhost" }, PLAN_CONFIG);
+
+    expect(stripe.subscriptions.retrieve).not.toHaveBeenCalled();
+    expect(userRepo.update).not.toHaveBeenCalled();
+  });
+
+  it("ne fait rien si subscription absente", async () => {
+    const session = { metadata: { userId: "user-1" }, subscription: null, customer: "cus_1" } as unknown as Stripe.CheckoutSession;
+    const userRepo = makeUserRepo();
+    const stripe = { subscriptions: { retrieve: vi.fn() } } as unknown as Stripe;
+
+    await handleCheckoutCompleted(session, { stripe, userRepo, appUrl: "http://localhost" }, PLAN_CONFIG);
+
+    expect(stripe.subscriptions.retrieve).not.toHaveBeenCalled();
+  });
+
+  it("met à jour le plan selon le priceId", async () => {
+    const session = {
+      metadata: { userId: "user-1" },
+      subscription: "sub_abc",
+      customer: "cus_1",
+    } as unknown as Stripe.CheckoutSession;
+    const userRepo = makeUserRepo();
+    const stripe = {
+      subscriptions: {
+        retrieve: vi.fn().mockResolvedValue({
+          items: { data: [{ price: { id: "price_standard_123" } }] },
+        }),
+      },
+    } as unknown as Stripe;
+
+    await handleCheckoutCompleted(session, { stripe, userRepo, appUrl: "http://localhost" }, PLAN_CONFIG);
+
+    expect(userRepo.update).toHaveBeenCalledWith("user-1", expect.objectContaining({
+      plan: "standard",
+      stripeSubscriptionId: "sub_abc",
+    }));
+  });
+});
+
+describe("handleSubscriptionChange", () => {
+  function makeUserRepo(overrides = {}) {
+    return {
+      findById: vi.fn(),
+      findByEmail: vi.fn(),
+      findByProvider: vi.fn(),
+      findByStripeCustomerId: vi.fn().mockResolvedValue(makeUser({ id: "user-from-cus" })),
+      findUsersWithTrialEndingOn: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn().mockResolvedValue(makeUser()),
+      incrementQuestions: vi.fn(),
+      resetMonthlyQuestions: vi.fn(),
+      ...overrides,
+    } as unknown as UserRepository;
+  }
+
+  it("met à jour le plan via userId dans metadata", async () => {
+    const subscription = {
+      metadata: { userId: "user-1" },
+      customer: "cus_1",
+      status: "active",
+      items: { data: [{ price: { id: "price_standard_123" } }] },
+      stripeSubscriptionId: "sub_1",
+    } as unknown as Stripe.Subscription;
+
+    const userRepo = makeUserRepo();
+    const stripe = {} as unknown as Stripe;
+
+    await handleSubscriptionChange(subscription, { stripe, userRepo, appUrl: "http://localhost" }, PLAN_CONFIG);
+
+    expect(userRepo.update).toHaveBeenCalledWith("user-1", expect.objectContaining({ plan: "standard" }));
+  });
+
+  it("cherche par customerId si userId absent des metadata", async () => {
+    const subscription = {
+      metadata: {},
+      customer: "cus_lookup",
+      status: "active",
+      items: { data: [{ price: { id: "price_premium_123" } }] },
+      stripeSubscriptionId: "sub_2",
+    } as unknown as Stripe.Subscription;
+
+    const userRepo = makeUserRepo();
+    const stripe = {} as unknown as Stripe;
+
+    await handleSubscriptionChange(subscription, { stripe, userRepo, appUrl: "http://localhost" }, PLAN_CONFIG);
+
+    expect(userRepo.findByStripeCustomerId).toHaveBeenCalledWith("cus_lookup");
+    expect(userRepo.update).toHaveBeenCalledWith("user-from-cus", expect.objectContaining({ plan: "premium" }));
+  });
+
+  it("marque expired si statut canceled", async () => {
+    const subscription = {
+      metadata: { userId: "user-1" },
+      customer: "cus_1",
+      status: "canceled",
+      items: { data: [{ price: { id: "price_standard_123" } }] },
+      stripeSubscriptionId: "sub_3",
+    } as unknown as Stripe.Subscription;
+
+    const userRepo = makeUserRepo();
+    const stripe = {} as unknown as Stripe;
+
+    await handleSubscriptionChange(subscription, { stripe, userRepo, appUrl: "http://localhost" }, PLAN_CONFIG);
+
+    expect(userRepo.update).toHaveBeenCalledWith("user-1", expect.objectContaining({ plan: "expired" }));
   });
 });

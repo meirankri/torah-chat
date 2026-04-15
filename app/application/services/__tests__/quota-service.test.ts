@@ -90,6 +90,18 @@ describe("getModelForPlan", () => {
   it("expired → standard model", () => {
     expect(getModelForPlan("expired", env)).toBe("standard-model");
   });
+
+  it("fallback sur llama-3.1-70b si WORKERS_AI_MODEL_STANDARD absent", () => {
+    expect(getModelForPlan("standard", {})).toBe("@cf/meta/llama-3.1-70b-instruct");
+  });
+
+  it("fallback sur llama-3.1-70b pour premium si WORKERS_AI_MODEL_PREMIUM absent", () => {
+    expect(getModelForPlan("premium", {})).toBe("@cf/meta/llama-3.1-70b-instruct");
+  });
+
+  it("premium utilise WORKERS_AI_MODEL_STANDARD si PREMIUM absent", () => {
+    expect(getModelForPlan("premium", { WORKERS_AI_MODEL_STANDARD: "fallback-model" })).toBe("fallback-model");
+  });
 });
 
 describe("checkAndIncrementQuota", () => {
@@ -147,5 +159,41 @@ describe("checkAndIncrementQuota", () => {
 
     expect(result.allowed).toBe(true);
     expect(result.questionsLimit).toBe(2000);
+  });
+
+  it("reset le compteur mensuel si questionsResetAt est > 30 jours", async () => {
+    const oldDate = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString();
+    const user = makeUser({
+      plan: "standard",
+      questionsThisMonth: 100,
+      questionsResetAt: oldDate,
+    });
+    // After reset, findById returns user with 0 questions
+    const refreshedUser = makeUser({ plan: "standard", questionsThisMonth: 0 });
+    const repo = {
+      findById: vi.fn().mockResolvedValue(refreshedUser),
+      findByEmail: vi.fn(),
+      findByProvider: vi.fn(),
+      findByStripeCustomerId: vi.fn(),
+      findUsersWithTrialEndingOn: vi.fn().mockResolvedValue([]),
+      create: vi.fn(),
+      update: vi.fn().mockResolvedValue(user),
+      incrementQuestions: vi.fn().mockResolvedValue(undefined),
+      resetMonthlyQuestions: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const result = await checkAndIncrementQuota(user, repo, BASE_CONFIG);
+
+    expect(repo.resetMonthlyQuestions).toHaveBeenCalledWith("user-1");
+    expect(result.allowed).toBe(true);
+  });
+
+  it("free_trial sans trialEndsAt : autorisé si quota dispo", async () => {
+    const user = makeUser({ plan: "free_trial", trialEndsAt: null, questionsThisMonth: 0 });
+    const repo = makeRepo(user);
+
+    const result = await checkAndIncrementQuota(user, repo, BASE_CONFIG);
+
+    expect(result.allowed).toBe(true);
   });
 });
