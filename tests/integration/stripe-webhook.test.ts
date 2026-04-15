@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from "vitest";
 import {
   handleCheckoutCompleted,
   handleSubscriptionChange,
+  handleInvoicePaid,
+  handlePaymentFailed,
 } from "../../app/application/services/stripe-service";
 import type { UserRepository } from "../../app/domain/repositories/user-repository";
 import type { User } from "../../app/domain/entities/user";
@@ -153,5 +155,56 @@ describe("handleSubscriptionChange", () => {
       plan: "premium",
       stripeSubscriptionId: "sub_456",
     });
+  });
+});
+
+describe("handleInvoicePaid — reset questions mensuelles", () => {
+  it("réinitialise les questions mensuelles pour l'utilisateur", async () => {
+    const user = makeUser({ id: "user-1", stripeCustomerId: "cus_123" });
+    const repo = makeRepo(user);
+    const invoice = { customer: "cus_123" } as unknown as Stripe.Invoice;
+
+    await handleInvoicePaid(
+      invoice,
+      { stripe: {} as Stripe, userRepo: repo, appUrl: "http://localhost" }
+    );
+
+    expect(repo.findByStripeCustomerId).toHaveBeenCalledWith("cus_123");
+    expect(repo.resetMonthlyQuestions).toHaveBeenCalledWith("user-1");
+  });
+});
+
+describe("handlePaymentFailed — notification email paiement échoué", () => {
+  it("envoie un email à l'utilisateur dont le paiement a échoué", async () => {
+    const user = makeUser({ id: "user-1", email: "user@example.com" });
+    const repo = makeRepo(user);
+    const invoice = { id: "inv_fail", customer: "cus_123" } as unknown as Stripe.Invoice;
+    const sendEmail = vi.fn().mockResolvedValue(undefined);
+
+    await handlePaymentFailed(
+      invoice,
+      { stripe: {} as Stripe, userRepo: repo, appUrl: "http://localhost" },
+      {
+        emailClient: { sendEmail } as unknown as import("../../app/infrastructure/email/brevo-client").BrevoClient,
+        appUrl: "http://localhost",
+      }
+    );
+
+    expect(repo.findByStripeCustomerId).toHaveBeenCalledWith("cus_123");
+    expect(sendEmail).toHaveBeenCalledOnce();
+  });
+
+  it("ne plante pas si emailDeps est null (Brevo non configuré)", async () => {
+    const user = makeUser();
+    const repo = makeRepo(user);
+    const invoice = { id: "inv_fail", customer: "cus_123" } as unknown as Stripe.Invoice;
+
+    await expect(
+      handlePaymentFailed(
+        invoice,
+        { stripe: {} as Stripe, userRepo: repo, appUrl: "http://localhost" },
+        null
+      )
+    ).resolves.toBeUndefined();
   });
 });

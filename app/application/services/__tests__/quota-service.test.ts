@@ -52,16 +52,16 @@ function makeRepo(user: User): UserRepository {
 }
 
 describe("getPlanLimit", () => {
-  it("free_trial → 50", () => {
-    expect(getPlanLimit("free_trial", BASE_CONFIG)).toBe(50);
+  it("free_trial → null (illimité pendant le trial)", () => {
+    expect(getPlanLimit("free_trial", BASE_CONFIG)).toBeNull();
   });
 
   it("standard → standardLimit", () => {
     expect(getPlanLimit("standard", BASE_CONFIG)).toBe(500);
   });
 
-  it("premium → premiumLimit", () => {
-    expect(getPlanLimit("premium", BASE_CONFIG)).toBe(2000);
+  it("premium → null (illimité)", () => {
+    expect(getPlanLimit("premium", BASE_CONFIG)).toBeNull();
   });
 
   it("expired → 0", () => {
@@ -151,14 +151,14 @@ describe("checkAndIncrementQuota", () => {
     expect(repo.update).toHaveBeenCalledWith("user-1", { plan: "expired" });
   });
 
-  it("autorise un utilisateur premium sous la limite", async () => {
-    const user = makeUser({ plan: "premium", questionsThisMonth: 999 });
+  it("autorise un utilisateur premium sans limite de questions", async () => {
+    const user = makeUser({ plan: "premium", questionsThisMonth: 9999 });
     const repo = makeRepo(user);
 
     const result = await checkAndIncrementQuota(user, repo, BASE_CONFIG);
 
     expect(result.allowed).toBe(true);
-    expect(result.questionsLimit).toBe(2000);
+    expect(result.questionsLimit).toBeNull();
   });
 
   it("reset le compteur mensuel si questionsResetAt est > 30 jours", async () => {

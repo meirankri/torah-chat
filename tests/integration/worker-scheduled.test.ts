@@ -114,31 +114,28 @@ describe("Cron expressions", () => {
 import { getPlanLimit } from "~/application/services/quota-service";
 
 describe("getPlanLimit — limites configurables", () => {
-  it("free_trial retourne 50 (fixe)", () => {
-    expect(getPlanLimit("free_trial", { standardLimit: 500, premiumLimit: 2000 })).toBe(50);
+  it("free_trial retourne null (illimité pendant le trial)", () => {
+    expect(getPlanLimit("free_trial", { standardLimit: 500, premiumLimit: 2000 })).toBeNull();
   });
 
   it("standard retourne standardLimit", () => {
     expect(getPlanLimit("standard", { standardLimit: 300, premiumLimit: 2000 })).toBe(300);
   });
 
-  it("premium retourne premiumLimit", () => {
-    expect(getPlanLimit("premium", { standardLimit: 500, premiumLimit: 5000 })).toBe(5000);
+  it("premium retourne null (illimité)", () => {
+    expect(getPlanLimit("premium", { standardLimit: 500, premiumLimit: 5000 })).toBeNull();
   });
 
   it("expired retourne 0", () => {
     expect(getPlanLimit("expired", { standardLimit: 500, premiumLimit: 2000 })).toBe(0);
   });
 
-  it("utilise les valeurs par défaut si config non fournie", () => {
-    // DEFAULT_QUOTA: standard=500, premium=2000
+  it("standard utilise les valeurs par défaut si config non fournie", () => {
+    // DEFAULT_QUOTA: standard=500
     expect(getPlanLimit("standard")).toBe(500);
-    expect(getPlanLimit("premium")).toBe(2000);
   });
 
-  it("premium limit est maintenant configurable via wrangler var", () => {
-    // Simulate reading from env: PLAN_PREMIUM_QUESTIONS_LIMIT=3000
-    const premiumLimit = parseInt("3000", 10);
-    expect(getPlanLimit("premium", { standardLimit: 500, premiumLimit })).toBe(3000);
+  it("premium est illimité (null) quelle que soit la config", () => {
+    expect(getPlanLimit("premium", { standardLimit: 500, premiumLimit: 3000 })).toBeNull();
   });
 });

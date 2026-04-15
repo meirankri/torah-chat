@@ -25,11 +25,11 @@ const DEFAULT_QUOTA: QuotaConfig = {
 export function getPlanLimit(plan: UserPlan, config: QuotaConfig = DEFAULT_QUOTA): number | null {
   switch (plan) {
     case "free_trial":
-      return 50; // 50 questions during trial
+      return null; // Unlimited during trial (access limited by trialEndsAt duration)
     case "standard":
       return config.standardLimit;
     case "premium":
-      return config.premiumLimit;
+      return null; // Unlimited for premium
     case "expired":
       return 0;
     default:
