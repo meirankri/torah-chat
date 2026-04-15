@@ -107,6 +107,13 @@
 - [x] Export conversation en Markdown (GET /api/conversations/:id/export + bouton téléchargement dans sidebar)
 - [x] Suppression textes custom admin (DELETE /api/admin/custom-texts?title=)
 
+## Phase 16 — P3 SEO Pages Statiques
+
+- [x] Route /questions/:slug — page SSR avec JSON-LD FAQ schema, meta description, sources
+- [x] Route /questions — index des questions publiées groupées par catégorie + CTA chat
+- [x] API admin CRUD /api/admin/static-questions (POST/GET/DELETE, auto-slug)
+- [x] Migration D1 0003_static_questions (slug UNIQUE, published, sources_json)
+
 ## Phase 10 — DevOps / Production
 - [x] GitHub Actions CI/CD (tests + build + deploy Cloudflare Workers sur push main)
 - [x] .env.example complet (toutes les variables, Apple Sign-In, CRON_SECRET, GEMINI_API_KEY)
