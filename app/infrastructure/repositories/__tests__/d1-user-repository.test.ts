@@ -48,12 +48,14 @@ const baseUserRow = {
 describe("D1UserRepository", () => {
   let db: D1Database;
   let mockFirst: ReturnType<typeof vi.fn>;
+  let mockAll: ReturnType<typeof vi.fn>;
   let mockRun: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     const mocks = createMockDB();
     db = mocks.db;
     mockFirst = mocks.mockFirst;
+    mockAll = mocks.mockAll;
     mockRun = mocks.mockRun;
   });
 
@@ -106,6 +108,34 @@ describe("D1UserRepository", () => {
     await repo.incrementQuestions("user-1");
     expect(db.prepare).toHaveBeenCalledWith(
       expect.stringContaining("questions_this_month = questions_this_month + 1")
+    );
+  });
+
+  it("findUsersWithTrialEndingOn retourne les utilisateurs dont l'essai se termine à la date donnée", async () => {
+    const trialUser = { ...baseUserRow, plan: "free_trial", trial_ends_at: "2026-04-20T00:00:00Z" };
+    mockAll.mockResolvedValueOnce({ results: [trialUser] });
+    const repo = new D1UserRepository(db);
+    const users = await repo.findUsersWithTrialEndingOn("2026-04-20");
+    expect(users).toHaveLength(1);
+    expect(users[0]?.plan).toBe("free_trial");
+    expect(db.prepare).toHaveBeenCalledWith(
+      expect.stringContaining("trial_ends_at LIKE ? || '%'")
+    );
+  });
+
+  it("findUsersWithTrialEndingOn retourne un tableau vide si aucun utilisateur", async () => {
+    mockAll.mockResolvedValueOnce({ results: [] });
+    const repo = new D1UserRepository(db);
+    const users = await repo.findUsersWithTrialEndingOn("2026-01-01");
+    expect(users).toEqual([]);
+  });
+
+  it("resetMonthlyQuestions remet le compteur à zéro", async () => {
+    mockRun.mockResolvedValueOnce({});
+    const repo = new D1UserRepository(db);
+    await repo.resetMonthlyQuestions("user-1");
+    expect(db.prepare).toHaveBeenCalledWith(
+      expect.stringContaining("questions_this_month = 0")
     );
   });
 });
