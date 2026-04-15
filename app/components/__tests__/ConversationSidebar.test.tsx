@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ConversationSidebar } from "../ConversationSidebar";
 
 const mockConversations = [
@@ -34,7 +34,14 @@ const defaultProps = {
   onClose: vi.fn(),
 };
 
+// Mock fetch for share tests
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
+
 describe("ConversationSidebar", () => {
+  beforeEach(() => {
+    mockFetch.mockReset();
+  });
   it("se monte correctement", () => {
     render(<ConversationSidebar {...defaultProps} />);
     expect(screen.getByRole("complementary")).toBeDefined();
@@ -110,6 +117,21 @@ describe("ConversationSidebar", () => {
     const archiveButtons = screen.getAllByTitle("Archiver");
     fireEvent.click(archiveButtons[0]!);
     expect(onArchive).toHaveBeenCalledWith("conv-1", true);
+  });
+
+  it("ouvre le panneau de partage au clic sur le bouton partager", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ token: "abc123" }),
+    });
+    render(<ConversationSidebar {...defaultProps} />);
+    const shareButtons = screen.getAllByTitle("Partager cette conversation");
+    fireEvent.click(shareButtons[0]!);
+    // Le panneau s'ouvre (le fetch est en cours)
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/conversations/conv-1/share",
+      { method: "POST" }
+    );
   });
 
   it("affiche la section archives quand il y a des conversations archivées", () => {

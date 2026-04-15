@@ -153,6 +153,15 @@
     "deleteAccountCancel": "Annuler",
     "deleting": "Suppression..."
   },
+  "share": {
+    "shareConversation": "Partager",
+    "copyLink": "Copier le lien",
+    "linkCopied": "Lien copié !",
+    "revokeLink": "Supprimer le lien",
+    "cta": "Posez vos propres questions sur Torah Chat",
+    "startChat": "Commencer une conversation",
+    "shareTooltip": "Partager cette conversation"
+  },
   "sources": {
     "viewOnSefaria": "Voir sur Sefaria",
     "showMore": "Voir plus",

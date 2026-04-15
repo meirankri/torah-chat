@@ -17,7 +17,9 @@ interface ConversationItemProps {
   onConfirmDelete: () => void;
   onCancelDelete: () => void;
   onArchive: () => void;
+  onShare: () => void;
   archiveLabel: string;
+  shareLabel: string;
   renameLabel: string;
   deleteLabel: string;
   deleteConfirmLabel: string;
@@ -42,7 +44,9 @@ function ConversationItem({
   onConfirmDelete,
   onCancelDelete,
   onArchive,
+  onShare,
   archiveLabel,
+  shareLabel,
   renameLabel,
   deleteLabel,
   deleteConfirmLabel,
@@ -123,6 +127,15 @@ function ConversationItem({
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Z" />
+              </svg>
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onShare(); }}
+              className="rounded p-1 text-gray-400 hover:bg-green-100 hover:text-green-600 dark:hover:bg-green-900/30 dark:hover:text-green-400"
+              title={shareLabel}
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
               </svg>
             </button>
             <button
@@ -209,6 +222,10 @@ export function ConversationSidebar({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [archivesOpen, setArchivesOpen] = useState(false);
+  const [sharingId, setSharingId] = useState<string | null>(null);
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [shareLinkCopied, setShareLinkCopied] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
 
   const startRename = useCallback((conversation: Conversation) => {
     setEditingId(conversation.id);
@@ -226,6 +243,43 @@ export function ConversationSidebar({
     onDeleteConversation(id);
     setDeletingId(null);
   };
+
+  const handleShare = useCallback(async (convId: string) => {
+    setSharingId(convId);
+    setShareToken(null);
+    setShareLinkCopied(false);
+    setShareLoading(true);
+    try {
+      const res = await fetch(`/api/conversations/${convId}/share`, { method: "POST" });
+      if (res.ok) {
+        const data = (await res.json()) as { token: string };
+        setShareToken(data.token);
+      }
+    } catch {
+      // non-blocking
+    } finally {
+      setShareLoading(false);
+    }
+  }, []);
+
+  const handleCopyShareLink = useCallback(async () => {
+    if (!shareToken) return;
+    const url = `${window.location.origin}/share/${shareToken}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareLinkCopied(true);
+      setTimeout(() => setShareLinkCopied(false), 2000);
+    } catch {
+      // fallback: select text
+    }
+  }, [shareToken]);
+
+  const handleRevokeShare = useCallback(async () => {
+    if (!sharingId) return;
+    await fetch(`/api/conversations/${sharingId}/share`, { method: "DELETE" });
+    setShareToken(null);
+    setSharingId(null);
+  }, [sharingId]);
 
   const filteredConversations = searchQuery.trim()
     ? conversations.filter((c) =>
@@ -305,7 +359,9 @@ export function ConversationSidebar({
                   onConfirmDelete={() => confirmDelete(conv.id)}
                   onCancelDelete={() => setDeletingId(null)}
                   onArchive={() => onArchiveConversation(conv.id, true)}
+                  onShare={() => handleShare(conv.id)}
                   archiveLabel={t("sidebar.archiveConversation")}
+                  shareLabel={t("share.shareTooltip")}
                   renameLabel={t("common.rename")}
                   deleteLabel={t("common.delete")}
                   deleteConfirmLabel={t("sidebar.deleteConfirm")}
@@ -352,7 +408,9 @@ export function ConversationSidebar({
                       onConfirmDelete={() => confirmDelete(conv.id)}
                       onCancelDelete={() => setDeletingId(null)}
                       onArchive={() => onArchiveConversation(conv.id, false)}
+                      onShare={() => handleShare(conv.id)}
                       archiveLabel={t("sidebar.unarchiveConversation")}
+                      shareLabel={t("share.shareTooltip")}
                       renameLabel={t("common.rename")}
                       deleteLabel={t("common.delete")}
                       deleteConfirmLabel={t("sidebar.deleteConfirm")}
@@ -367,6 +425,50 @@ export function ConversationSidebar({
             </div>
           )}
         </div>
+
+        {/* Share panel */}
+        {sharingId && (
+          <div className="border-t border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                {t("share.shareConversation")}
+              </span>
+              <button
+                onClick={() => { setSharingId(null); setShareToken(null); }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {shareLoading ? (
+              <p className="text-xs text-gray-400">{t("common.loading")}</p>
+            ) : shareToken ? (
+              <div className="space-y-2">
+                <div className="flex gap-1.5">
+                  <input
+                    readOnly
+                    value={`${typeof window !== "undefined" ? window.location.origin : ""}/share/${shareToken}`}
+                    className="flex-1 truncate rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-600 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
+                  />
+                  <button
+                    onClick={handleCopyShareLink}
+                    className="shrink-0 rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700"
+                  >
+                    {shareLinkCopied ? t("share.linkCopied") : t("share.copyLink")}
+                  </button>
+                </div>
+                <button
+                  onClick={handleRevokeShare}
+                  className="text-xs text-red-500 hover:text-red-700 dark:text-red-400"
+                >
+                  {t("share.revokeLink")}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        )}
       </aside>
     </>
   );

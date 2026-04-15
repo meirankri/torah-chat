@@ -153,6 +153,15 @@
     "deleteAccountCancel": "ביטול",
     "deleting": "מוחק..."
   },
+  "share": {
+    "shareConversation": "שתף",
+    "copyLink": "העתק קישור",
+    "linkCopied": "הקישור הועתק!",
+    "revokeLink": "הסר קישור",
+    "cta": "שאל שאלות משלך ב-Torah Chat",
+    "startChat": "התחל שיחה",
+    "shareTooltip": "שתף שיחה זו"
+  },
   "sources": {
     "viewOnSefaria": "צפה ב-Sefaria",
     "showMore": "הצג עוד",

@@ -88,6 +88,10 @@
 - [x] Modification du nom dans le profil (édition inline avec PATCH /api/profile)
 - [x] Suppression de compte RGPD (DELETE /api/profile — annule Stripe + supprime toutes les données, confirmation modale)
 
+## Phase 12 — P2 Partage & SEO
+
+- [x] Partage de conversations (lien public lecture seule `/share/:token`, révocation, bouton sidebar)
+
 ## Phase 10 — DevOps / Production
 - [x] GitHub Actions CI/CD (tests + build + deploy Cloudflare Workers sur push main)
 - [x] .env.example complet (toutes les variables, Apple Sign-In, CRON_SECRET, GEMINI_API_KEY)
