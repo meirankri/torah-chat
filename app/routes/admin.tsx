@@ -24,6 +24,11 @@ interface AdminStats {
   shares: {
     total: number;
   };
+  content: {
+    customTexts: number;
+    customChunks: number;
+    staticQuestions: number;
+  };
 }
 
 export async function loader({ request, context }: Route.LoaderArgs) {
@@ -127,6 +132,22 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     .prepare("SELECT COUNT(*) as count FROM shared_conversations")
     .first<{ count: number }>();
 
+  // Content stats (RAG custom texts + SEO static questions)
+  const customChunks = await db
+    .prepare("SELECT COUNT(*) as count FROM custom_texts")
+    .first<{ count: number }>()
+    .catch(() => ({ count: 0 }));
+
+  const customTexts = await db
+    .prepare("SELECT COUNT(DISTINCT title) as count FROM custom_texts")
+    .first<{ count: number }>()
+    .catch(() => ({ count: 0 }));
+
+  const staticQuestions = await db
+    .prepare("SELECT COUNT(*) as count FROM static_questions WHERE published = 1")
+    .first<{ count: number }>()
+    .catch(() => ({ count: 0 }));
+
   const stats: AdminStats = {
     users: {
       total: totalUsers?.count ?? 0,
@@ -149,6 +170,11 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     },
     shares: {
       total: totalShares?.count ?? 0,
+    },
+    content: {
+      customTexts: customTexts?.count ?? 0,
+      customChunks: customChunks?.count ?? 0,
+      staticQuestions: staticQuestions?.count ?? 0,
     },
   };
 
@@ -265,10 +291,6 @@ export default function AdminDashboard() {
               value={stats.messages.thisMonth}
               sub="messages user"
             />
-            <StatCard
-              label="Liens partagés"
-              value={stats.shares.total}
-            />
           </div>
         </section>
 
@@ -293,6 +315,29 @@ export default function AdminDashboard() {
             <StatCard
               label="Satisfaction"
               value={satisfactionRate !== null ? `${satisfactionRate}%` : "—"}
+            />
+          </div>
+        </section>
+
+        {/* Content */}
+        <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            Contenu
+          </h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <StatCard
+              label="Textes RAG"
+              value={stats.content.customTexts}
+              sub={`${stats.content.customChunks} chunks`}
+            />
+            <StatCard
+              label="Pages SEO"
+              value={stats.content.staticQuestions}
+              sub="questions publiées"
+            />
+            <StatCard
+              label="Liens partagés"
+              value={stats.shares.total}
             />
           </div>
         </section>
