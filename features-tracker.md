@@ -102,6 +102,11 @@
 - [x] Route admin POST /api/admin/custom-texts — ingestion textes (title, author, category, content → chunks → Vectorize + D1)
 - [x] Intégration dans api.chat.ts : sources custom enrichissent le contexte LLM + affichage frontend comme bloc source "custom"
 
+## Phase 15 — P3 Export & Admin
+
+- [x] Export conversation en Markdown (GET /api/conversations/:id/export + bouton téléchargement dans sidebar)
+- [x] Suppression textes custom admin (DELETE /api/admin/custom-texts?title=)
+
 ## Phase 10 — DevOps / Production
 - [x] GitHub Actions CI/CD (tests + build + deploy Cloudflare Workers sur push main)
 - [x] .env.example complet (toutes les variables, Apple Sign-In, CRON_SECRET, GEMINI_API_KEY)
