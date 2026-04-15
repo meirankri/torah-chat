@@ -161,7 +161,9 @@
     "revokeLink": "Supprimer le lien",
     "cta": "Posez vos propres questions sur Torah Chat",
     "startChat": "Commencer une conversation",
-    "shareTooltip": "Partager cette conversation"
+    "shareTooltip": "Partager cette conversation",
+    "notFound": "Conversation introuvable",
+    "notFoundDescription": "Ce lien de partage n'existe pas ou a été révoqué."
   },
   "sources": {
     "viewOnSefaria": "Voir sur Sefaria",

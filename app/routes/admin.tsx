@@ -1,5 +1,5 @@
 import type { Route } from "./+types/admin";
-import { useLoaderData } from "react-router";
+import { useLoaderData, isRouteErrorResponse, useRouteError } from "react-router";
 
 interface AdminStats {
   users: {
@@ -355,3 +355,24 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const is401 = isRouteErrorResponse(error) && error.status === 401;
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 text-center dark:bg-gray-950">
+      <div className="max-w-md space-y-4">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          {is401 ? "Accès refusé" : "Erreur dashboard"}
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400">
+          {is401
+            ? "Vous n'avez pas accès au dashboard admin."
+            : "Une erreur s'est produite lors du chargement du dashboard."}
+        </p>
+      </div>
+    </div>
+  );
+}
+

@@ -3,7 +3,7 @@
  * Server-side rendered with JSON-LD FAQ schema, meta tags, and CTA to chat.
  */
 import type { Route } from "./+types/questions.$slug";
-import { useLoaderData } from "react-router";
+import { useLoaderData, isRouteErrorResponse, useRouteError } from "react-router";
 import { Suspense, lazy } from "react";
 
 const MarkdownRenderer = lazy(() =>
@@ -202,6 +202,32 @@ export default function StaticQuestionPage() {
           — Chatbot IA avec sources rabbiniques
         </p>
       </footer>
+    </div>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const is404 = isRouteErrorResponse(error) && error.status === 404;
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 text-center dark:bg-gray-950">
+      <div className="max-w-md space-y-4">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          {is404 ? "Question introuvable" : "Une erreur est survenue"}
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400">
+          {is404
+            ? "Cette page n'existe pas ou a été supprimée."
+            : "Veuillez réessayer ultérieurement."}
+        </p>
+        <a
+          href="/questions"
+          className="inline-block rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          Voir toutes les questions
+        </a>
+      </div>
     </div>
   );
 }

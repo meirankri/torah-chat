@@ -1,5 +1,5 @@
 import type { Route } from "./+types/share.$token";
-import { useLoaderData } from "react-router";
+import { useLoaderData, isRouteErrorResponse, useRouteError, Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Suspense, lazy } from "react";
 import { SourceBlock } from "~/components/SourceBlock";
@@ -188,6 +188,32 @@ export default function SharedConversationPage() {
           </a>
         </div>
       </main>
+    </div>
+  );
+}
+
+export function ErrorBoundary() {
+  const error = useRouteError();
+  const { t } = useTranslation();
+
+  const is404 = isRouteErrorResponse(error) && error.status === 404;
+
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 text-center dark:bg-gray-950">
+      <div className="max-w-md space-y-4">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          {is404 ? t("share.notFound") : t("errors.oops")}
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400">
+          {is404 ? t("share.notFoundDescription") : t("errors.unexpected")}
+        </p>
+        <Link
+          to="/chat"
+          className="inline-block rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          {t("share.startChat")}
+        </Link>
+      </div>
     </div>
   );
 }

@@ -161,7 +161,9 @@
     "revokeLink": "הסר קישור",
     "cta": "שאל שאלות משלך ב-Torah Chat",
     "startChat": "התחל שיחה",
-    "shareTooltip": "שתף שיחה זו"
+    "shareTooltip": "שתף שיחה זו",
+    "notFound": "שיחה לא נמצאה",
+    "notFoundDescription": "קישור השיתוף הזה אינו קיים או שבוטל."
   },
   "sources": {
     "viewOnSefaria": "צפה ב-Sefaria",
