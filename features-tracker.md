@@ -114,6 +114,13 @@
 - [x] API admin CRUD /api/admin/static-questions (POST/GET/DELETE, auto-slug)
 - [x] Migration D1 0003_static_questions (slug UNIQUE, published, sources_json)
 
+## Phase 17 — SEO Technique & Monitoring
+
+- [x] GET /sitemap.xml — sitemap dynamique (pages statiques + /questions/:slug publiées)
+- [x] GET /robots.txt — Disallow admin/api, Sitemap pointant vers l'origine
+- [x] GET /api/health — healthcheck DB (200 ok / 503 degraded, no-cache)
+- [x] Admin dashboard enrichi — section Contenu (textes RAG, chunks, pages SEO publiées)
+
 ## Phase 10 — DevOps / Production
 - [x] GitHub Actions CI/CD (tests + build + deploy Cloudflare Workers sur push main)
 - [x] .env.example complet (toutes les variables, Apple Sign-In, CRON_SECRET, GEMINI_API_KEY)
