@@ -211,9 +211,13 @@ export async function action({ request, context }: Route.ActionArgs) {
         (env as Record<string, string>).PLAN_STANDARD_QUESTIONS_LIMIT || "500",
         10
       );
+      const premiumLimit = parseInt(
+        (env as Record<string, string>).PLAN_PREMIUM_QUESTIONS_LIMIT || "2000",
+        10
+      );
       const quotaResult = await checkAndIncrementQuota(user, userRepo, {
         standardLimit,
-        premiumLimit: 2000,
+        premiumLimit,
       });
 
       if (!quotaResult.allowed) {
