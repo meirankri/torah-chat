@@ -34,4 +34,5 @@ export default [
   route("api/conversations/:id/share", "routes/api.conversations.$id.share.ts"),
   route("share/:token", "routes/share.$token.tsx"),
   route("admin", "routes/admin.tsx"),
+  route("api/admin/custom-texts", "routes/api.admin.custom-texts.ts"),
 ] satisfies RouteConfig;

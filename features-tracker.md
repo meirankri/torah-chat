@@ -96,6 +96,12 @@
 
 - [x] Dashboard admin `/admin` (stats utilisateurs par plan, questions ce mois, conversations, feedback, taux de satisfaction — protégé par ADMIN_SECRET)
 
+## Phase 14 — RAG Sources Custom
+
+- [x] Service RAG Vectorize : chunking, embedding Workers AI (@cf/baai/bge-base-en-v1.5), query top-K
+- [x] Route admin POST /api/admin/custom-texts — ingestion textes (title, author, category, content → chunks → Vectorize + D1)
+- [x] Intégration dans api.chat.ts : sources custom enrichissent le contexte LLM + affichage frontend comme bloc source "custom"
+
 ## Phase 10 — DevOps / Production
 - [x] GitHub Actions CI/CD (tests + build + deploy Cloudflare Workers sur push main)
 - [x] .env.example complet (toutes les variables, Apple Sign-In, CRON_SECRET, GEMINI_API_KEY)

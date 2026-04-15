@@ -5,12 +5,14 @@ import type { ChatMessage } from "~/domain/entities/chat";
 import { SefariaClient } from "~/infrastructure/sefaria/sefaria-client";
 import type { SefariaSourceResult } from "~/infrastructure/sefaria/sefaria-client";
 import { GeminiClient, chatHistoryToGemini } from "~/infrastructure/gemini/gemini-client";
-import { mapSefariaResultsToSources } from "~/application/services/source-service";
+import { mapSefariaResultsToSources, mapCustomSourcesToSources } from "~/application/services/source-service";
 import { requireAuth } from "~/lib/auth/middleware";
 import { D1ConversationRepository } from "~/infrastructure/repositories/d1-conversation-repository";
 import { D1UserRepository } from "~/infrastructure/repositories/d1-user-repository";
 import { checkAndIncrementQuota, getModelForPlan } from "~/application/services/quota-service";
 import { checkRateLimit } from "~/lib/rate-limit";
+import { retrieveCustomSources } from "~/application/services/rag-service";
+import type { CustomSource } from "~/application/services/rag-service";
 
 const MAX_HISTORY_MESSAGES = 10;
 
@@ -111,6 +113,17 @@ function buildSourceContext(sources: SefariaSourceResult[]): string {
   });
 
   return `\n\nSOURCES DISPONIBLES (vérifiées sur Sefaria) :\n${parts.join("\n\n")}`;
+}
+
+function buildCustomSourceContext(customSources: CustomSource[]): string {
+  if (customSources.length === 0) return "";
+
+  const parts = customSources.map((s) => {
+    const ref = s.author ? `${s.title} — ${s.author}` : s.title;
+    return `[${ref}]\n${s.content}`;
+  });
+
+  return `\n\nSOURCES ADDITIONNELLES (livres indexés) :\n${parts.join("\n\n")}`;
 }
 
 const SYSTEM_PROMPT_BASE = `Tu es un assistant spécialisé dans les textes juifs (Torah, Talmud, Midrash, Halakha, Hassidout, Kabbale, Moussar).
@@ -360,15 +373,36 @@ export async function action({ request, context }: Route.ActionArgs) {
     sourcesError = "Aucune source trouvée pour cette question.";
   }
 
-  // Step 3: Build system prompt with source context
-  const sourceContext = buildSourceContext(sefariaResults);
+  // Step 3a: RAG — retrieve custom Torah sources from Vectorize
+  let customSources: CustomSource[] = [];
+  if (env.AI && env.DB) {
+    const vectorize = (env as Record<string, unknown>).VECTORIZE as Parameters<typeof retrieveCustomSources>[1];
+    if (vectorize) {
+      customSources = await retrieveCustomSources(
+        env.AI as Parameters<typeof retrieveCustomSources>[0],
+        vectorize,
+        env.DB,
+        content.trim(),
+        3
+      );
+      if (customSources.length > 0) {
+        console.log(`[Chat API] RAG: ${customSources.length} custom sources retrieved`);
+      }
+    }
+  }
+
+  // Step 3b: Build system prompt with Sefaria + custom source context
+  const sourceContext = buildSourceContext(sefariaResults) + buildCustomSourceContext(customSources);
   const systemPrompt = SYSTEM_PROMPT_BASE + sourceContext;
 
   const recentHistory = contextHistory.slice(-MAX_HISTORY_MESSAGES);
   const geminiHistory = chatHistoryToGemini(recentHistory);
 
-  const sourcesForFrontend =
+  const sefariaSourcesForFrontend =
     sefariaResults.length > 0 ? mapSefariaResultsToSources(sefariaResults, "pending") : [];
+  const customSourcesForFrontend =
+    customSources.length > 0 ? mapCustomSourcesToSources(customSources, "pending") : [];
+  const sourcesForFrontend = [...sefariaSourcesForFrontend, ...customSourcesForFrontend];
 
   let responseText: string;
   try {

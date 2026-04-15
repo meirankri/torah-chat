@@ -29,6 +29,12 @@
   "ai": {
     "binding": "AI"
   },
+  "vectorize": [
+    {
+      "binding": "VECTORIZE",
+      "index_name": "torah-chat-custom-texts"
+    }
+  ],
   // Secrets set via: npx wrangler secret put <SECRET_NAME>
   // For local dev, they're read from .dev.vars
   // Required secrets: GEMINI_API_KEY, JWT_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
