@@ -1,4 +1,12 @@
+import type { Route } from "./+types/offline";
 import { useTranslation } from "react-i18next";
+
+export function meta(_args: Route.MetaArgs) {
+  return [
+    { title: "Torah Chat — Hors ligne" },
+    { name: "description", content: "Vous êtes hors ligne. Reconnectez-vous pour accéder à Torah Chat." },
+  ];
+}
 
 export default function Offline() {
   const { t } = useTranslation();

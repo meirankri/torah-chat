@@ -1,5 +1,12 @@
 import type { Route } from "./+types/profile";
 import { useLoaderData, Link, useNavigate } from "react-router";
+
+export function meta(_args: Route.MetaArgs) {
+  return [
+    { title: "Torah Chat — Mon profil" },
+    { name: "description", content: "Gérez votre compte Torah Chat, votre abonnement et vos préférences." },
+  ];
+}
 import { useTranslation } from "react-i18next";
 import { requireAuth } from "~/lib/auth/middleware";
 import { D1UserRepository } from "~/infrastructure/repositories/d1-user-repository";
@@ -40,6 +47,10 @@ export async function loader({ request, context }: Route.LoaderArgs) {
     (env as Record<string, string>).PLAN_STANDARD_QUESTIONS_LIMIT || "500",
     10
   );
+  const premiumLimit = parseInt(
+    (env as Record<string, string>).PLAN_PREMIUM_QUESTIONS_LIMIT || "2000",
+    10
+  );
 
   return {
     user: {
@@ -49,7 +60,7 @@ export async function loader({ request, context }: Route.LoaderArgs) {
       plan: user.plan,
       provider: user.provider,
       questionsThisMonth: user.questionsThisMonth,
-      questionsLimit: getPlanLimit(user.plan, { standardLimit, premiumLimit: 2000 }),
+      questionsLimit: getPlanLimit(user.plan, { standardLimit, premiumLimit }),
       trialEndsAt: user.trialEndsAt,
       emailVerified: user.emailVerified,
       createdAt: user.createdAt,

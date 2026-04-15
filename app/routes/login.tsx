@@ -1,9 +1,17 @@
+import type { Route } from "./+types/login";
 import { useState } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { AuthForm } from "~/components/auth/AuthForm";
 import { GoogleSignInButton } from "~/components/auth/GoogleSignInButton";
 import { AppleSignInButton } from "~/components/auth/AppleSignInButton";
+
+export function meta(_args: Route.MetaArgs) {
+  return [
+    { title: "Torah Chat — Connexion" },
+    { name: "description", content: "Connectez-vous à Torah Chat pour poser vos questions sur la Torah, le Talmud et la Halakha." },
+  ];
+}
 
 export default function Login() {
   const { t } = useTranslation();

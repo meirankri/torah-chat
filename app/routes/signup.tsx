@@ -1,9 +1,17 @@
+import type { Route } from "./+types/signup";
 import { useState } from "react";
 import { useNavigate, Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { AuthForm } from "~/components/auth/AuthForm";
 import { GoogleSignInButton } from "~/components/auth/GoogleSignInButton";
 import { AppleSignInButton } from "~/components/auth/AppleSignInButton";
+
+export function meta(_args: Route.MetaArgs) {
+  return [
+    { title: "Torah Chat — Créer un compte" },
+    { name: "description", content: "Créez votre compte Torah Chat et commencez à explorer les textes sacrés avec l'aide de l'IA." },
+  ];
+}
 
 export default function Signup() {
   const { t } = useTranslation();

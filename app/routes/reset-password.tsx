@@ -1,7 +1,15 @@
+import type { Route } from "./+types/reset-password";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { AuthForm } from "~/components/auth/AuthForm";
+
+export function meta(_args: Route.MetaArgs) {
+  return [
+    { title: "Torah Chat — Réinitialiser le mot de passe" },
+    { name: "description", content: "Choisissez un nouveau mot de passe pour votre compte Torah Chat." },
+  ];
+}
 
 export default function ResetPassword() {
   const { t } = useTranslation();
