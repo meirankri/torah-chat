@@ -1,10 +1,12 @@
 import type { Route } from "./+types/api.stripe.webhook";
 import { createStripeClient } from "~/infrastructure/stripe/stripe-client";
 import { D1UserRepository } from "~/infrastructure/repositories/d1-user-repository";
+import { createBrevoClient } from "~/infrastructure/email/brevo-client";
 import {
   handleCheckoutCompleted,
   handleSubscriptionChange,
   handleInvoicePaid,
+  handlePaymentFailed,
 } from "~/application/services/stripe-service";
 import type Stripe from "stripe";
 
@@ -75,10 +77,12 @@ export async function action({ request, context }: Route.ActionArgs) {
         await handleInvoicePaid(event.data.object as Stripe.Invoice, deps);
         break;
 
-      case "invoice.payment_failed":
-        // Log for monitoring — plan update handled via subscription.updated
-        console.log(`[Stripe] Payment failed for invoice: ${(event.data.object as Stripe.Invoice).id}`);
+      case "invoice.payment_failed": {
+        const emailClient = createBrevoClient(env);
+        const emailDeps = emailClient ? { emailClient, appUrl } : null;
+        await handlePaymentFailed(event.data.object as Stripe.Invoice, deps, emailDeps);
         break;
+      }
 
       default:
         console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);

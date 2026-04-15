@@ -1,6 +1,8 @@
 import type Stripe from "stripe";
 import type { UserRepository } from "~/domain/repositories/user-repository";
 import type { UserPlan } from "~/domain/entities/user";
+import type { EmailDeps } from "~/application/services/email-service";
+import { sendPaymentFailedEmail } from "~/application/services/email-service";
 
 export interface StripeDeps {
   stripe: Stripe;
@@ -211,6 +213,38 @@ export async function handleInvoicePaid(
 
   await deps.userRepo.resetMonthlyQuestions(user.id);
   console.log(`[Stripe] invoice.paid: reset monthly questions for user ${user.id}`);
+}
+
+/**
+ * Handles invoice.payment_failed event.
+ * Sends a payment failed notification email to the user.
+ */
+export async function handlePaymentFailed(
+  invoice: Stripe.Invoice,
+  deps: StripeDeps,
+  emailDeps: EmailDeps | null
+): Promise<void> {
+  const customerId =
+    typeof invoice.customer === "string"
+      ? invoice.customer
+      : invoice.customer?.id;
+
+  if (!customerId) {
+    console.error("[Stripe] invoice.payment_failed: missing customer id");
+    return;
+  }
+
+  const user = await deps.userRepo.findByStripeCustomerId(customerId);
+  if (!user) {
+    console.log(`[Stripe] invoice.payment_failed: no user for customer ${customerId}`);
+    return;
+  }
+
+  console.log(`[Stripe] Payment failed for user ${user.id}, invoice: ${invoice.id}`);
+
+  if (emailDeps) {
+    await sendPaymentFailedEmail(emailDeps, { email: user.email, name: user.name });
+  }
 }
 
 async function applySubscriptionUpdate(

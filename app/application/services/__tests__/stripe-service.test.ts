@@ -6,6 +6,7 @@ import {
   handleCheckoutCompleted,
   handleSubscriptionChange,
   handleInvoicePaid,
+  handlePaymentFailed,
 } from "../stripe-service";
 import type { UserRepository } from "~/domain/repositories/user-repository";
 import type { User } from "~/domain/entities/user";
@@ -301,5 +302,65 @@ describe("handleInvoicePaid", () => {
 
     expect(userRepo.findByStripeCustomerId).toHaveBeenCalledWith("cus_obj");
     expect(userRepo.resetMonthlyQuestions).toHaveBeenCalledWith("user-1");
+  });
+});
+
+describe("handlePaymentFailed", () => {
+  function makeUserRepo(overrides = {}) {
+    return {
+      findById: vi.fn(),
+      findByEmail: vi.fn(),
+      findByProvider: vi.fn(),
+      findByStripeCustomerId: vi.fn().mockResolvedValue(makeUser({ id: "user-1" })),
+      findUsersWithTrialEndingOn: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn().mockResolvedValue(makeUser()),
+      incrementQuestions: vi.fn(),
+      resetMonthlyQuestions: vi.fn().mockResolvedValue(undefined),
+      ...overrides,
+    } as unknown as UserRepository;
+  }
+
+  it("trouve l'utilisateur par customerId et envoie un email", async () => {
+    const invoice = { id: "inv_1", customer: "cus_1" } as unknown as Stripe.Invoice;
+    const userRepo = makeUserRepo();
+    const stripe = {} as unknown as Stripe;
+    const sendEmail = vi.fn().mockResolvedValue(undefined);
+    const emailDeps = {
+      emailClient: { sendEmail } as unknown as import("~/infrastructure/email/brevo-client").BrevoClient,
+      appUrl: "http://localhost",
+    };
+
+    await handlePaymentFailed(invoice, { stripe, userRepo, appUrl: "http://localhost" }, emailDeps);
+
+    expect(userRepo.findByStripeCustomerId).toHaveBeenCalledWith("cus_1");
+    expect(sendEmail).toHaveBeenCalledOnce();
+  });
+
+  it("ne fait rien si aucun utilisateur trouvé", async () => {
+    const invoice = { id: "inv_2", customer: "cus_unknown" } as unknown as Stripe.Invoice;
+    const userRepo = makeUserRepo({
+      findByStripeCustomerId: vi.fn().mockResolvedValue(null),
+    });
+    const stripe = {} as unknown as Stripe;
+    const sendEmail = vi.fn();
+    const emailDeps = {
+      emailClient: { sendEmail } as unknown as import("~/infrastructure/email/brevo-client").BrevoClient,
+      appUrl: "http://localhost",
+    };
+
+    await handlePaymentFailed(invoice, { stripe, userRepo, appUrl: "http://localhost" }, emailDeps);
+
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("ne plante pas si emailDeps est null", async () => {
+    const invoice = { id: "inv_3", customer: "cus_1" } as unknown as Stripe.Invoice;
+    const userRepo = makeUserRepo();
+    const stripe = {} as unknown as Stripe;
+
+    await expect(
+      handlePaymentFailed(invoice, { stripe, userRepo, appUrl: "http://localhost" }, null)
+    ).resolves.toBeUndefined();
   });
 });

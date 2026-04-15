@@ -81,6 +81,44 @@ export async function sendPasswordResetEmail(
   });
 }
 
+export async function sendPaymentFailedEmail(
+  deps: EmailDeps,
+  params: { email: string; name: string }
+): Promise<void> {
+  const { email, name } = params;
+  const displayName = name || email.split("@")[0] || "cher utilisateur";
+
+  await deps.emailClient.sendEmail({
+    to: { email, name },
+    subject: "Échec de paiement — Torah Chat",
+    htmlContent: `
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333">
+  <div style="text-align:center;margin-bottom:30px">
+    <h1 style="color:#2563eb;margin:0">Torah Chat</h1>
+  </div>
+  <h2>Problème de paiement</h2>
+  <p>Bonjour ${displayName},</p>
+  <p>Nous n'avons pas pu traiter votre paiement pour l'abonnement Torah Chat.</p>
+  <p>Veuillez mettre à jour vos informations de paiement pour continuer à accéder au service :</p>
+  <div style="text-align:center;margin:30px 0">
+    <a href="${deps.appUrl}/profile" style="background:#dc2626;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold">
+      Mettre à jour mon paiement
+    </a>
+  </div>
+  <p style="color:#666;font-size:14px">Si vous pensez qu'il s'agit d'une erreur, contactez-nous ou gérez votre abonnement via le portail Stripe.</p>
+  <hr style="border:none;border-top:1px solid #eee;margin:30px 0">
+  <p style="color:#999;font-size:12px;text-align:center">
+    Torah Chat — Ne pas répondre à cet email.
+  </p>
+</body>
+</html>`,
+    textContent: `Problème de paiement — Torah Chat\n\nBonjour ${displayName},\n\nNous n'avons pas pu traiter votre paiement. Veuillez mettre à jour vos informations de paiement :\n${deps.appUrl}/profile\n\nTorah Chat`,
+  });
+}
+
 export async function sendTrialReminderEmail(
   deps: EmailDeps,
   params: { email: string; name: string; daysLeft: number }

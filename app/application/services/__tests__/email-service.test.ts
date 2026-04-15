@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { sendWelcomeEmail, sendPasswordResetEmail, sendTrialReminderEmail } from "../email-service";
+import { sendWelcomeEmail, sendPasswordResetEmail, sendTrialReminderEmail, sendPaymentFailedEmail } from "../email-service";
 import type { BrevoClient } from "~/infrastructure/email/brevo-client";
 
 function makeEmailClient(): BrevoClient {
@@ -46,5 +46,28 @@ describe("sendTrialReminderEmail", () => {
     const call = vi.mocked(emailClient.sendEmail).mock.calls[0]![0];
     expect(call.htmlContent).toContain("3");
     expect(call.htmlContent).toContain("https://app.example.com/pricing");
+  });
+});
+
+describe("sendPaymentFailedEmail", () => {
+  it("envoie un email d'échec de paiement avec lien profil", async () => {
+    const emailClient = makeEmailClient();
+    await sendPaymentFailedEmail({ ...deps, emailClient }, {
+      email: "user@example.com", name: "Dan",
+    });
+    expect(emailClient.sendEmail).toHaveBeenCalledOnce();
+    const call = vi.mocked(emailClient.sendEmail).mock.calls[0]![0];
+    expect(call.subject).toContain("paiement");
+    expect(call.to.email).toBe("user@example.com");
+    expect(call.htmlContent).toContain("https://app.example.com/profile");
+  });
+
+  it("utilise le nom de l'email si le nom est vide", async () => {
+    const emailClient = makeEmailClient();
+    await sendPaymentFailedEmail({ ...deps, emailClient }, {
+      email: "dan@example.com", name: "",
+    });
+    const call = vi.mocked(emailClient.sendEmail).mock.calls[0]![0];
+    expect(call.htmlContent).toContain("dan");
   });
 });
