@@ -92,6 +92,10 @@
 
 - [x] Partage de conversations (lien public lecture seule `/share/:token`, révocation, bouton sidebar)
 
+## Phase 13 — Dashboard Admin
+
+- [x] Dashboard admin `/admin` (stats utilisateurs par plan, questions ce mois, conversations, feedback, taux de satisfaction — protégé par ADMIN_SECRET)
+
 ## Phase 10 — DevOps / Production
 - [x] GitHub Actions CI/CD (tests + build + deploy Cloudflare Workers sur push main)
 - [x] .env.example complet (toutes les variables, Apple Sign-In, CRON_SECRET, GEMINI_API_KEY)

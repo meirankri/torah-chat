@@ -30,4 +30,8 @@ export default [
   route("api/stripe/portal", "routes/api.stripe.portal.ts"),
   route("api/stripe/webhook", "routes/api.stripe.webhook.ts"),
   route("api/cron/trial-reminders", "routes/api.cron.trial-reminders.ts"),
+  route("api/feedback", "routes/api.feedback.ts"),
+  route("api/conversations/:id/share", "routes/api.conversations.$id.share.ts"),
+  route("share/:token", "routes/share.$token.tsx"),
+  route("admin", "routes/admin.tsx"),
 ] satisfies RouteConfig;
