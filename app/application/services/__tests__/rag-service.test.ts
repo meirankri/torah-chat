@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { chunkText, generateEmbedding, retrieveCustomSources } from "../rag-service";
+import { chunkText, generateEmbedding, retrieveCustomSources, DEFAULT_EMBEDDING_MODEL } from "../rag-service";
 
 describe("RAG Service", () => {
   describe("chunkText", () => {
@@ -67,7 +67,7 @@ describe("RAG Service", () => {
 
       const result = await generateEmbedding(mockAi as Parameters<typeof generateEmbedding>[0], "Test question");
       expect(mockAi.run).toHaveBeenCalledWith(
-        "@cf/baai/bge-base-en-v1.5",
+        DEFAULT_EMBEDDING_MODEL,
         { text: ["Test question"] }
       );
       expect(result).toEqual([0.1, 0.2, 0.3, 0.4]);

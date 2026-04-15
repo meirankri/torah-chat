@@ -31,17 +31,22 @@ interface D1CustomTextRow {
   chunk_index: number;
 }
 
-// Cloudflare AI embedding model for text
-const EMBEDDING_MODEL = "@cf/baai/bge-base-en-v1.5";
+/**
+ * Embedding model used for RAG.
+ * bge-m3 is multilingual (handles Hebrew, French, English) and is preferred.
+ * bge-base-en-v1.5 is English-only (legacy fallback).
+ */
+export const DEFAULT_EMBEDDING_MODEL = "@cf/baai/bge-m3";
 
 /**
  * Generate a vector embedding for a given text using Workers AI.
  */
 export async function generateEmbedding(
   ai: { run: (model: string, input: { text: string[] }) => Promise<{ data: number[][] }> },
-  text: string
+  text: string,
+  model = DEFAULT_EMBEDDING_MODEL
 ): Promise<number[]> {
-  const result = await ai.run(EMBEDDING_MODEL, { text: [text] });
+  const result = await ai.run(model, { text: [text] });
   const embedding = result.data[0];
   if (!embedding) {
     throw new Error("No embedding returned from Workers AI");
@@ -57,9 +62,10 @@ export async function queryVectorize(
   vectorize: { query: (vector: number[], options: { topK: number; returnMetadata?: string }) => Promise<VectorizeQueryResult> },
   ai: { run: (model: string, input: { text: string[] }) => Promise<{ data: number[][] }> },
   question: string,
-  topK = 3
+  topK = 3,
+  model = DEFAULT_EMBEDDING_MODEL
 ): Promise<VectorizeMatch[]> {
-  const embedding = await generateEmbedding(ai, question);
+  const embedding = await generateEmbedding(ai, question, model);
   const result = await vectorize.query(embedding, { topK, returnMetadata: "none" });
   return result.matches ?? [];
 }
@@ -100,12 +106,13 @@ export async function retrieveCustomSources(
   vectorize: { query: (vector: number[], options: { topK: number; returnMetadata?: string }) => Promise<VectorizeQueryResult> } | null | undefined,
   db: D1Database,
   question: string,
-  topK = 3
+  topK = 3,
+  model = DEFAULT_EMBEDDING_MODEL
 ): Promise<CustomSource[]> {
   if (!vectorize) return [];
 
   try {
-    const matches = await queryVectorize(vectorize, ai, question, topK);
+    const matches = await queryVectorize(vectorize, ai, question, topK, model);
     if (matches.length === 0) return [];
 
     const ids = matches.map((m) => m.id);

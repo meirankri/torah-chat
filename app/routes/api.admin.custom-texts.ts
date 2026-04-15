@@ -13,7 +13,7 @@
  *   - content: string  (required — plain text, will be chunked)
  */
 import type { Route } from "./+types/api.admin.custom-texts";
-import { chunkText, generateEmbedding } from "~/application/services/rag-service";
+import { chunkText, generateEmbedding, DEFAULT_EMBEDDING_MODEL } from "~/application/services/rag-service";
 
 interface IngestBody {
   title: string;
@@ -115,6 +115,8 @@ export async function action({ request, context }: Route.ActionArgs) {
   }
 
   const ai = env.AI as { run: (model: string, input: { text: string[] }) => Promise<{ data: number[][] }> };
+  // Allow override via EMBEDDING_MODEL env var (e.g. switch between bge-m3 and bge-base-en-v1.5)
+  const embeddingModel = (env as Record<string, string>).EMBEDDING_MODEL ?? DEFAULT_EMBEDDING_MODEL;
 
   const now = new Date().toISOString();
   const insertedIds: string[] = [];
@@ -127,7 +129,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     // Generate embedding
     let embedding: number[];
     try {
-      embedding = await generateEmbedding(ai, chunk);
+      embedding = await generateEmbedding(ai, chunk, embeddingModel);
     } catch (embErr) {
       console.error(`[Admin] Embedding failed for chunk ${i}:`, embErr);
       return Response.json(
