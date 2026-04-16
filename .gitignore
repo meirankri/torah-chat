@@ -18,3 +18,7 @@ worker-configuration.d.ts
 
 # Cron logs
 /logs/
+
+# Sefaria ingestion data (regenerable via scripts/)
+scripts/*.ndjson
+scripts/*.progress.json
