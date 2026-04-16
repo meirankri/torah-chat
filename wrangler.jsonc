@@ -35,8 +35,8 @@
   },
   "vectorize": [
     {
-      "binding": "VECTORIZE",
-      "index_name": "torah-chat-custom-texts"
+      "binding": "VECTORIZE_SEFARIA",
+      "index_name": "torah-chat-sefaria"
     }
   ],
   // Scheduled cron triggers

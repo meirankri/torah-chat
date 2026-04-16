@@ -37,7 +37,6 @@ export default [
   route("share/:token", "routes/share.$token.tsx"),
   route("admin", "routes/admin.tsx"),
   route("api/admin/custom-texts", "routes/api.admin.custom-texts.ts"),
-  route("api/admin/embedding-test", "routes/api.admin.embedding-test.ts"),
   route("api/admin/static-questions", "routes/api.admin.static-questions.ts"),
   route("api/health", "routes/api.health.ts"),
   route("sitemap.xml", "routes/sitemap[.]xml.ts"),

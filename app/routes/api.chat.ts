@@ -5,7 +5,7 @@ import type { ChatMessage } from "~/domain/entities/chat";
 import { SefariaClient } from "~/infrastructure/sefaria/sefaria-client";
 import type { SefariaSourceResult } from "~/infrastructure/sefaria/sefaria-client";
 import { GeminiClient, chatHistoryToGemini } from "~/infrastructure/gemini/gemini-client";
-import { mapSefariaResultsToSources, mapCustomSourcesToSources } from "~/application/services/source-service";
+import { mapSefariaResultsToSources, mapCustomSourcesToSources, mapSefariaRagSourcesToSources } from "~/application/services/source-service";
 import { requireAuth } from "~/lib/auth/middleware";
 import { D1ConversationRepository } from "~/infrastructure/repositories/d1-conversation-repository";
 import { D1UserRepository } from "~/infrastructure/repositories/d1-user-repository";
@@ -13,6 +13,8 @@ import { checkAndIncrementQuota, getModelForPlan } from "~/application/services/
 import { checkRateLimit } from "~/lib/rate-limit";
 import { retrieveCustomSources } from "~/application/services/rag-service";
 import type { CustomSource } from "~/application/services/rag-service";
+import { retrieveSefariaRagSources, buildSefariaRagContext } from "~/application/services/sefaria-rag-service";
+import type { SefariaRagSource } from "~/application/services/sefaria-rag-service";
 import { extractKeywordsFromQuestion, buildSourceContext, buildCustomSourceContext } from "~/lib/chat-keywords";
 
 const MAX_HISTORY_MESSAGES = 10;
@@ -27,19 +29,23 @@ function chatErrorResponse(code: ChatErrorCode, message: string, status: number)
 
 const SYSTEM_PROMPT_BASE = `Tu es un assistant spécialisé dans les textes juifs (Torah, Talmud, Midrash, Halakha, Hassidout, Kabbale, Moussar).
 
-RÈGLES OBLIGATOIRES :
-1. Utilise EN PRIORITÉ les sources fournies ci-dessous pour appuyer ta réponse. Cite-les avec leur référence exacte.
-2. Si les sources fournies ne suffisent pas, tu peux compléter avec tes connaissances mais PRÉCISE que ces sources supplémentaires ne sont pas vérifiées sur Sefaria.
-3. Ne JAMAIS inventer de sources. Si tu ne connais pas la source exacte, dis-le explicitement.
-4. Répondre dans la langue de la question (français, anglais ou hébreu).
-5. Quand un sujet fait l'objet d'une ma'hloket (divergence d'opinions), présenter les différents avis avec leurs sources.
-6. Ne JAMAIS émettre de psak halakha. Toujours renvoyer à un rav compétent pour les questions pratiques.
-7. Utiliser la translittération courante pour les termes hébraïques (ex: "Shabbat" pas "Sabbath").
-8. Structurer les réponses avec des paragraphes clairs et du markdown.
+RÈGLES OBLIGATOIRES DE CITATION :
+1. Tu DOIS baser ta réponse UNIQUEMENT sur les sources listées dans la section "SOURCES SEFARIA" ci-dessous.
+2. Tu ne cites QUE les refs qui apparaissent EXACTEMENT dans les sources fournies. Tu utilises leur nom complet tel qu'affiché (ex: "Rashi on Numbers 20:12:1", "Berakhot 2a:1").
+3. INTERDIT ABSOLU : ne JAMAIS écrire "selon Rashi", "selon Rambam", "selon Ramban", "selon le Talmud" si le nom du commentateur ou de l'ouvrage n'est pas explicitement présent dans les sources fournies. Si tu veux mentionner un commentateur qui n'est pas dans les sources, abstiens-toi.
+4. Si les sources fournies ne contiennent pas d'information sur la question, dis-le clairement : "Les sources fournies ne traitent pas directement de cette question." N'INVENTE PAS de réponse.
+5. Chaque affirmation factuelle doit être suivie du ref exact entre crochets.
+
+AUTRES RÈGLES :
+6. Répondre dans la langue de la question (français, anglais ou hébreu).
+7. Quand un sujet fait l'objet d'une ma'hloket (divergence d'opinions), présenter les différents avis avec leurs sources.
+8. Ne JAMAIS émettre de psak halakha. Toujours renvoyer à un rav compétent pour les questions pratiques.
+9. Utiliser la translittération courante pour les termes hébraïques (ex: "Shabbat" pas "Sabbath").
+10. Structurer les réponses avec des paragraphes clairs et du markdown.
 
 FORMAT DE RÉPONSE :
 - Réponse claire et structurée en markdown
-- Sources citées entre crochets : [Talmud Bavli, Kiddoushin 31a]
+- Sources citées entre crochets avec le ref EXACT de la section SOURCES SEFARIA
 - Disclaimer en fin de réponse : rappeler de consulter un rav pour toute question pratique`;
 
 export async function action({ request, context }: Route.ActionArgs) {
@@ -184,11 +190,44 @@ export async function action({ request, context }: Route.ActionArgs) {
   const contextHistory =
     dbHistory.length > 0 ? dbHistory : history.map((m) => ({ role: m.role, content: m.content }));
 
-  // Step 1: Gemini extracts search keywords + book refs from the question
+  // Step 0: RAG Sefaria — retrieve via Gemini Embedding + Vectorize (priority source).
+  // On demande topK=10 avec minScore=0.4 puis on filtre agressivement :
+  //   - On garde top-5
+  //   - On rejette celles dont le score est trop en retrait du top (> 0.1 de gap)
+  //   - On skip le fallback Sefaria ES si le top score ≥ 0.48 ET ≥ 3 sources.
+  let sefariaRagSources: SefariaRagSource[] = [];
+  const vectorizeSefaria = (env as Record<string, unknown>).VECTORIZE_SEFARIA as
+    | Parameters<typeof retrieveSefariaRagSources>[1]
+    | undefined;
+  if (geminiApiKey && vectorizeSefaria && env.DB) {
+    try {
+      const rawMatches = await retrieveSefariaRagSources(
+        geminiApiKey,
+        vectorizeSefaria,
+        env.DB,
+        content.trim(),
+        10,
+        0.4
+      );
+      // Filtre par gap : si le top = 0.55, on garde celles >= 0.45
+      const topScore = rawMatches[0]?.score ?? 0;
+      const minByGap = topScore - 0.1;
+      sefariaRagSources = rawMatches.filter((s) => s.score >= minByGap).slice(0, 5);
+      console.log(
+        `[Chat API] Step 0: RAG Sefaria ${sefariaRagSources.length}/${rawMatches.length} sources (top=${topScore.toFixed(3)}, gap-min=${minByGap.toFixed(3)})`
+      );
+    } catch (err) {
+      console.error("[Chat API] RAG Sefaria failed:", err);
+    }
+  }
+  const topRagScore = sefariaRagSources[0]?.score ?? 0;
+  const skipFallback = sefariaRagSources.length >= 3 && topRagScore >= 0.48;
+
+  // Step 1: Gemini extracts search keywords + book refs from the question (fallback).
   let sefariaResults: SefariaSourceResult[] = [];
   let sourcesError: string | undefined;
   const emptyExtraction = { queries: [] as string[], refs: [] as string[] };
-  try {
+  if (!skipFallback) try {
     console.log(
       `[Chat API] Step 1: Extracting keywords + refs for "${content.trim().slice(0, 80)}..."`
     );
@@ -272,7 +311,7 @@ export async function action({ request, context }: Route.ActionArgs) {
     sourcesError = "Erreur lors de la recherche des sources.";
   }
 
-  if (sefariaResults.length === 0 && !sourcesError) {
+  if (sefariaResults.length === 0 && sefariaRagSources.length === 0 && !sourcesError) {
     sourcesError = "Aucune source trouvée pour cette question.";
   }
 
@@ -294,18 +333,27 @@ export async function action({ request, context }: Route.ActionArgs) {
     }
   }
 
-  // Step 3b: Build system prompt with Sefaria + custom source context
-  const sourceContext = buildSourceContext(sefariaResults) + buildCustomSourceContext(customSources);
+  // Step 3b: Build system prompt with RAG Sefaria + ES Sefaria + custom source context
+  const sourceContext =
+    buildSefariaRagContext(sefariaRagSources) +
+    buildSourceContext(sefariaResults) +
+    buildCustomSourceContext(customSources);
   const systemPrompt = SYSTEM_PROMPT_BASE + sourceContext;
 
   const recentHistory = contextHistory.slice(-MAX_HISTORY_MESSAGES);
   const geminiHistory = chatHistoryToGemini(recentHistory);
 
+  const sefariaRagForFrontend =
+    sefariaRagSources.length > 0 ? mapSefariaRagSourcesToSources(sefariaRagSources, "pending") : [];
   const sefariaSourcesForFrontend =
     sefariaResults.length > 0 ? mapSefariaResultsToSources(sefariaResults, "pending") : [];
   const customSourcesForFrontend =
     customSources.length > 0 ? mapCustomSourcesToSources(customSources, "pending") : [];
-  const sourcesForFrontend = [...sefariaSourcesForFrontend, ...customSourcesForFrontend];
+  const sourcesForFrontend = [
+    ...sefariaRagForFrontend,
+    ...sefariaSourcesForFrontend,
+    ...customSourcesForFrontend,
+  ];
 
   let responseText: string;
   try {

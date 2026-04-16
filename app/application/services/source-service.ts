@@ -1,6 +1,7 @@
 import type { MessageSource } from "~/domain/entities/source";
 import type { SefariaSourceResult } from "~/infrastructure/sefaria/sefaria-client";
 import type { CustomSource } from "~/application/services/rag-service";
+import type { SefariaRagSource } from "~/application/services/sefaria-rag-service";
 
 export function generateSourceId(): string {
   return `src-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -61,4 +62,31 @@ export function mapCustomSourcesToSources(
   messageId: string
 ): MessageSource[] {
   return sources.map((s) => customSourceToMessageSource(s, messageId));
+}
+
+export function sefariaRagSourceToMessageSource(
+  source: SefariaRagSource,
+  messageId: string
+): MessageSource {
+  const sefariaUrl = `https://www.sefaria.org/${encodeURIComponent(source.ref.replace(/ /g, "_"))}`;
+  return {
+    id: generateSourceId(),
+    messageId,
+    sourceType: "sefaria",
+    ref: source.ref,
+    title: source.ref,
+    textHebrew: source.he,
+    textTranslation: source.fr ?? source.en,
+    translationLanguage: source.fr ? "french" : source.en ? "english" : null,
+    category: source.category,
+    sefariaUrl,
+    createdAt: new Date().toISOString(),
+  };
+}
+
+export function mapSefariaRagSourcesToSources(
+  sources: SefariaRagSource[],
+  messageId: string
+): MessageSource[] {
+  return sources.map((s) => sefariaRagSourceToMessageSource(s, messageId));
 }
