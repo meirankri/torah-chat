@@ -320,6 +320,60 @@ export class SefariaClient {
   /**
    * Search Sefaria's full-text index by keywords, then fetch texts for top hits.
    */
+  /**
+   * Search by exact Hebrew/Aramaic phrase via Sefaria Elasticsearch.
+   * Optionally filter by category (Tanakh, Talmud, Commentary, etc.).
+   * Used by the search agent for exhaustive/occurrence queries.
+   */
+  async searchByHebrewPhrase(
+    phrase: string,
+    options: { category?: string; translationLang?: string; maxSources?: number } = {}
+  ): Promise<SefariaSourceResult[]> {
+    const { category, translationLang = "english", maxSources = 10 } = options;
+    const searchUrl = `${this.baseUrl}/api/search/text/_search`;
+    console.log(`[Sefaria] searchByHebrewPhrase: "${phrase.slice(0, 40)}..." category=${category ?? "all"}`);
+
+    const must = [{ multi_match: { query: phrase, fields: ["exact"], type: "phrase" as const } }];
+    const filter = category ? [{ term: { categories: category } }] : [];
+
+    try {
+      const response = await fetch(searchUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: { bool: { must, filter } },
+          size: maxSources * 3, // over-fetch for dedup
+          _source: ["ref", "heRef", "categories"],
+        }),
+      });
+
+      if (!response.ok) {
+        console.error(`[Sefaria] searchByHebrewPhrase failed: ${response.status}`);
+        return [];
+      }
+
+      const data = (await response.json()) as { hits?: { hits?: SefariaSearchHit[] } };
+      const hits = data.hits?.hits ?? [];
+
+      // Deduplicate by ref
+      const uniqueRefs = [...new Set(hits.map((h) => h._source.ref))].slice(0, maxSources);
+      console.log(`[Sefaria] searchByHebrewPhrase: ${uniqueRefs.length} unique refs from ${hits.length} hits`);
+      if (uniqueRefs.length === 0) return [];
+
+      const results = await Promise.allSettled(
+        uniqueRefs.map((ref) => this.getText(ref, translationLang))
+      );
+
+      return results
+        .filter((r): r is PromiseFulfilledResult<SefariaSourceResult | null> => r.status === "fulfilled")
+        .map((r) => r.value)
+        .filter((r): r is SefariaSourceResult => r !== null);
+    } catch (error) {
+      console.error("[Sefaria] searchByHebrewPhrase error:", error);
+      return [];
+    }
+  }
+
   async searchByKeywords(
     keywords: string[],
     translationLang: string = "english",

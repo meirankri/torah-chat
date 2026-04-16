@@ -145,6 +145,111 @@ export class GeminiClient {
   }
 }
 
+// ---------- Function calling types ----------
+
+export interface GeminiFunctionDeclaration {
+  name: string;
+  description: string;
+  parameters: {
+    type: "object";
+    properties: Record<string, { type: string; description?: string; items?: { type: string }; enum?: string[] }>;
+    required?: string[];
+  };
+}
+
+export interface GeminiFunctionCall {
+  name: string;
+  args: Record<string, unknown>;
+  id?: string;
+}
+
+interface GeminiFunctionCallPart {
+  functionCall: GeminiFunctionCall;
+}
+
+export interface GeminiFunctionResponsePart {
+  functionResponse: {
+    name: string;
+    id?: string;
+    response: Record<string, unknown>;
+  };
+}
+
+export interface GeminiContentPart {
+  text?: string;
+  functionCall?: GeminiFunctionCall;
+  functionResponse?: GeminiFunctionResponsePart["functionResponse"];
+}
+
+export interface GeminiContentMessage {
+  role: "user" | "model";
+  parts: GeminiContentPart[];
+}
+
+export interface FunctionCallResult {
+  type: "function_call";
+  call: GeminiFunctionCall;
+}
+
+export interface TextResult {
+  type: "text";
+  text: string;
+}
+
+export type AgentStepResult = FunctionCallResult | TextResult;
+
+// ---------- Extended GeminiClient ----------
+
+export class GeminiAgentClient {
+  private readonly baseUrl = "https://generativelanguage.googleapis.com/v1beta";
+  private readonly model = "gemini-2.5-flash";
+
+  constructor(private readonly apiKey: string) {}
+
+  /**
+   * Un seul tour de function calling : envoie l'historique + tools,
+   * retourne soit un function_call (le modèle veut appeler un outil),
+   * soit du texte (le modèle a fini).
+   */
+  async step(
+    systemPrompt: string,
+    contents: GeminiContentMessage[],
+    tools: GeminiFunctionDeclaration[]
+  ): Promise<AgentStepResult> {
+    const url = `${this.baseUrl}/models/${this.model}:generateContent?key=${this.apiKey}`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents,
+        tools: [{ functionDeclarations: tools }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      throw new Error(`GeminiAgent ${response.status}: ${errText.slice(0, 300)}`);
+    }
+
+    const data = (await response.json()) as { candidates?: Array<{ content?: { parts?: GeminiContentPart[] } }> };
+    const parts = data.candidates?.[0]?.content?.parts ?? [];
+
+    // Le modèle peut retourner un functionCall ou du texte
+    for (const part of parts) {
+      if (part.functionCall) {
+        return { type: "function_call", call: part.functionCall };
+      }
+    }
+
+    // Pas de function call → c'est du texte
+    const text = parts.map((p) => p.text ?? "").join("");
+    return { type: "text", text };
+  }
+}
+
 export function chatHistoryToGemini(
   history: { role: "user" | "assistant"; content: string }[]
 ): GeminiMessage[] {

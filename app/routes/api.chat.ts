@@ -3,9 +3,8 @@ import { MAX_INPUT_LENGTH } from "~/domain/entities/chat";
 import type { ChatErrorCode } from "~/domain/entities/chat";
 import type { ChatMessage } from "~/domain/entities/chat";
 import { SefariaClient } from "~/infrastructure/sefaria/sefaria-client";
-import type { SefariaSourceResult } from "~/infrastructure/sefaria/sefaria-client";
 import { GeminiClient, chatHistoryToGemini } from "~/infrastructure/gemini/gemini-client";
-import { mapSefariaResultsToSources, mapCustomSourcesToSources, mapSefariaRagSourcesToSources } from "~/application/services/source-service";
+import { mapAgentSourcesToSources, mapCustomSourcesToSources } from "~/application/services/source-service";
 import { requireAuth } from "~/lib/auth/middleware";
 import { D1ConversationRepository } from "~/infrastructure/repositories/d1-conversation-repository";
 import { D1UserRepository } from "~/infrastructure/repositories/d1-user-repository";
@@ -13,14 +12,11 @@ import { checkAndIncrementQuota, getModelForPlan } from "~/application/services/
 import { checkRateLimit } from "~/lib/rate-limit";
 import { retrieveCustomSources } from "~/application/services/rag-service";
 import type { CustomSource } from "~/application/services/rag-service";
-import { retrieveSefariaRagSources, buildSefariaRagContext } from "~/application/services/sefaria-rag-service";
-import type { SefariaRagSource } from "~/application/services/sefaria-rag-service";
-import { extractKeywordsFromQuestion, buildSourceContext, buildCustomSourceContext } from "~/lib/chat-keywords";
+import { searchAgent, buildAgentSourceContext } from "~/application/services/search-agent";
+import type { AgentSource } from "~/application/services/search-agent";
+import { buildCustomSourceContext } from "~/lib/chat-keywords";
 
 const MAX_HISTORY_MESSAGES = 10;
-const MAX_SEFARIA_SOURCES = 5;
-const SEFARIA_TIMEOUT_MS = 15_000;
-const GEMINI_EXTRACT_TIMEOUT_MS = 10_000;
 const LLM_TIMEOUT_MS = 30_000;
 
 function chatErrorResponse(code: ChatErrorCode, message: string, status: number) {
@@ -190,132 +186,40 @@ export async function action({ request, context }: Route.ActionArgs) {
   const contextHistory =
     dbHistory.length > 0 ? dbHistory : history.map((m) => ({ role: m.role, content: m.content }));
 
-  // Step 0: RAG Sefaria — retrieve via Gemini Embedding + Vectorize (priority source).
-  // On demande topK=10 avec minScore=0.4 puis on filtre agressivement :
-  //   - On garde top-5
-  //   - On rejette celles dont le score est trop en retrait du top (> 0.1 de gap)
-  //   - On skip le fallback Sefaria ES si le top score ≥ 0.48 ET ≥ 3 sources.
-  let sefariaRagSources: SefariaRagSource[] = [];
+  // Search Agent: Gemini autonome qui cherche les meilleures sources via RAG + ES
+  let agentSources: AgentSource[] = [];
+  let sourcesError: string | undefined;
   const vectorizeSefaria = (env as Record<string, unknown>).VECTORIZE_SEFARIA as
-    | Parameters<typeof retrieveSefariaRagSources>[1]
+    | { query: (vector: number[], options: { topK: number; returnMetadata?: string; filter?: Record<string, unknown> }) => Promise<{ matches: Array<{ id: string; score: number; metadata?: Record<string, string> }> }> }
     | undefined;
-  if (geminiApiKey && vectorizeSefaria && env.DB) {
+
+  if (geminiApiKey && env.DB) {
     try {
-      const rawMatches = await retrieveSefariaRagSources(
-        geminiApiKey,
-        vectorizeSefaria,
-        env.DB,
-        content.trim(),
-        10,
-        0.4
+      const agentResult = await searchAgent(
+        {
+          geminiKey: geminiApiKey,
+          vectorize: vectorizeSefaria ?? null,
+          sefaria,
+          db: env.DB,
+        },
+        content.trim()
       );
-      // Filtre par gap : si le top = 0.55, on garde celles >= 0.45
-      const topScore = rawMatches[0]?.score ?? 0;
-      const minByGap = topScore - 0.1;
-      sefariaRagSources = rawMatches.filter((s) => s.score >= minByGap).slice(0, 5);
+      agentSources = agentResult.sources;
       console.log(
-        `[Chat API] Step 0: RAG Sefaria ${sefariaRagSources.length}/${rawMatches.length} sources (top=${topScore.toFixed(3)}, gap-min=${minByGap.toFixed(3)})`
+        `[Chat API] Search Agent: ${agentSources.length} sources in ${agentResult.iterations} iterations`,
+        agentResult.reasoning
       );
     } catch (err) {
-      console.error("[Chat API] RAG Sefaria failed:", err);
+      console.error("[Chat API] Search Agent failed:", err);
+      sourcesError = "Erreur lors de la recherche des sources.";
     }
   }
-  const topRagScore = sefariaRagSources[0]?.score ?? 0;
-  const skipFallback = sefariaRagSources.length >= 3 && topRagScore >= 0.48;
 
-  // Step 1: Gemini extracts search keywords + book refs from the question (fallback).
-  let sefariaResults: SefariaSourceResult[] = [];
-  let sourcesError: string | undefined;
-  const emptyExtraction = { queries: [] as string[], refs: [] as string[] };
-  if (!skipFallback) try {
-    console.log(
-      `[Chat API] Step 1: Extracting keywords + refs for "${content.trim().slice(0, 80)}..."`
-    );
-    const extraction = await Promise.race([
-      gemini.extractSearchQueries(content.trim()),
-      new Promise<typeof emptyExtraction>((resolve) =>
-        setTimeout(() => {
-          console.warn("[Chat API] Gemini extraction timed out");
-          resolve(emptyExtraction);
-        }, GEMINI_EXTRACT_TIMEOUT_MS)
-      ),
-    ]);
-
-    const { queries: keywords, refs } = extraction;
-    console.log(`[Chat API] Extracted: ${keywords.length} keyword groups, ${refs.length} refs`);
-
-    // Step 2a: Search by direct refs (book/treatise names)
-    if (refs.length > 0) {
-      console.log("[Chat API] Step 2a: Searching Sefaria by refs...", refs);
-      const refResults = await Promise.race([
-        sefaria.searchByRefs(refs, keywords, "french", MAX_SEFARIA_SOURCES),
-        new Promise<SefariaSourceResult[]>((resolve) =>
-          setTimeout(() => {
-            console.warn("[Chat API] Sefaria ref search timed out");
-            resolve([]);
-          }, SEFARIA_TIMEOUT_MS)
-        ),
-      ]);
-      sefariaResults = refResults;
-      console.log(`[Chat API] Sefaria ref search: ${sefariaResults.length} results`);
-    }
-
-    // Step 2b: Search by keywords (full-text), fill remaining slots
-    const remainingSlots = MAX_SEFARIA_SOURCES - sefariaResults.length;
-    if (keywords.length > 0 && remainingSlots > 0) {
-      console.log("[Chat API] Step 2b: Searching Sefaria by keywords...");
-      const keywordResults = await Promise.race([
-        sefaria.searchByKeywords(keywords, "french", remainingSlots),
-        new Promise<SefariaSourceResult[]>((resolve) =>
-          setTimeout(() => {
-            console.warn("[Chat API] Sefaria keyword search timed out");
-            resolve([]);
-          }, SEFARIA_TIMEOUT_MS)
-        ),
-      ]);
-
-      // Merge, avoiding duplicate refs
-      const existingRefs = new Set(sefariaResults.map((s) => s.ref));
-      for (const result of keywordResults) {
-        if (!existingRefs.has(result.ref)) {
-          sefariaResults.push(result);
-          existingRefs.add(result.ref);
-        }
-      }
-      console.log(`[Chat API] After keyword search: ${sefariaResults.length} total results`);
-    }
-
-    // Step 2c: Fallback — search using raw question words when Gemini returned nothing
-    if (sefariaResults.length === 0) {
-      console.log("[Chat API] Step 2c: Fallback — direct keyword search from raw question...");
-      // Extract meaningful words (>3 chars) from the question as a best-effort search
-      const rawKeywords = extractKeywordsFromQuestion(content.trim());
-      console.log(`[Chat API] Step 2c: raw keywords = ${rawKeywords.join(", ")}`);
-      if (rawKeywords.length > 0) {
-        const fallbackResults = await Promise.race([
-          sefaria.searchByKeywords(rawKeywords, "french", MAX_SEFARIA_SOURCES),
-          new Promise<SefariaSourceResult[]>((resolve) =>
-            setTimeout(() => {
-              console.warn("[Chat API] Sefaria raw-keyword fallback timed out");
-              resolve([]);
-            }, SEFARIA_TIMEOUT_MS)
-          ),
-        ]);
-        sefariaResults = fallbackResults;
-        console.log(`[Chat API] Step 2c: ${sefariaResults.length} results from raw-keyword fallback`);
-      }
-    }
-
-  } catch (error) {
-    console.error("[Chat API] Sources fetch error:", error);
-    sourcesError = "Erreur lors de la recherche des sources.";
-  }
-
-  if (sefariaResults.length === 0 && sefariaRagSources.length === 0 && !sourcesError) {
+  if (agentSources.length === 0 && !sourcesError) {
     sourcesError = "Aucune source trouvée pour cette question.";
   }
 
-  // Step 3a: RAG — retrieve custom Torah sources from Vectorize
+  // Build system prompt with agent sources + custom sources
   let customSources: CustomSource[] = [];
   if (env.AI && env.DB) {
     const vectorize = (env as Record<string, unknown>).VECTORIZE as Parameters<typeof retrieveCustomSources>[1];
@@ -328,30 +232,23 @@ export async function action({ request, context }: Route.ActionArgs) {
         3
       );
       if (customSources.length > 0) {
-        console.log(`[Chat API] RAG: ${customSources.length} custom sources retrieved`);
+        console.log(`[Chat API] RAG custom: ${customSources.length} custom sources retrieved`);
       }
     }
   }
 
-  // Step 3b: Build system prompt with RAG Sefaria + ES Sefaria + custom source context
-  const sourceContext =
-    buildSefariaRagContext(sefariaRagSources) +
-    buildSourceContext(sefariaResults) +
-    buildCustomSourceContext(customSources);
+  const sourceContext = buildAgentSourceContext(agentSources) + buildCustomSourceContext(customSources);
   const systemPrompt = SYSTEM_PROMPT_BASE + sourceContext;
 
   const recentHistory = contextHistory.slice(-MAX_HISTORY_MESSAGES);
   const geminiHistory = chatHistoryToGemini(recentHistory);
 
-  const sefariaRagForFrontend =
-    sefariaRagSources.length > 0 ? mapSefariaRagSourcesToSources(sefariaRagSources, "pending") : [];
-  const sefariaSourcesForFrontend =
-    sefariaResults.length > 0 ? mapSefariaResultsToSources(sefariaResults, "pending") : [];
+  const agentSourcesForFrontend =
+    agentSources.length > 0 ? mapAgentSourcesToSources(agentSources, "pending") : [];
   const customSourcesForFrontend =
     customSources.length > 0 ? mapCustomSourcesToSources(customSources, "pending") : [];
   const sourcesForFrontend = [
-    ...sefariaRagForFrontend,
-    ...sefariaSourcesForFrontend,
+    ...agentSourcesForFrontend,
     ...customSourcesForFrontend,
   ];
 
