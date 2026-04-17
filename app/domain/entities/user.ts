@@ -15,6 +15,7 @@ export interface User {
   stripeSubscriptionId: string | null;
   questionsThisMonth: number;
   questionsResetAt: string | null;
+  geminiCredits: number;
   trialEndsAt: string | null;
   failedLoginAttempts: number;
   lockedUntil: string | null;

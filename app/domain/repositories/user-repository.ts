@@ -9,6 +9,7 @@ export interface UserRepository {
   delete(id: string): Promise<void>;
   incrementQuestions(id: string): Promise<void>;
   resetMonthlyQuestions(id: string): Promise<void>;
+  decrementGeminiCredits(id: string): Promise<number>;
   findByStripeCustomerId(customerId: string): Promise<User | null>;
   findUsersWithTrialEndingOn(dateStr: string): Promise<User[]>;
 }

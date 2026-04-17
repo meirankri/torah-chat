@@ -6,6 +6,7 @@ import { useChat } from "~/lib/use-chat";
 import { useConversations } from "~/lib/use-conversations";
 import { useAutoScroll } from "~/lib/use-auto-scroll";
 import { ChatInput } from "~/components/ChatInput";
+import { ModelSelector } from "~/components/ModelSelector";
 import { ChatMessage } from "~/components/ChatMessage";
 import { TypingIndicator } from "~/components/TypingIndicator";
 import { ChatErrorBanner } from "~/components/ChatErrorBanner";
@@ -82,6 +83,9 @@ export default function Chat() {
     isLoading,
     error,
     quotaInfo,
+    geminiCredits,
+    selectedModel,
+    setSelectedModel,
     sendMessage,
     editMessage,
     stopGeneration,
@@ -280,6 +284,13 @@ export default function Chat() {
           disabled={isLoading}
           isLoading={isLoading}
           canRegenerate={canRegenerate}
+          leftSlot={
+            <ModelSelector
+              selectedModel={selectedModel}
+              onModelChange={setSelectedModel}
+              geminiCredits={geminiCredits}
+            />
+          }
         />
       </div>
 

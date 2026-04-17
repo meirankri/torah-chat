@@ -43,6 +43,13 @@
     "edit": "Modifier",
     "quotaWarning": "Il vous reste {{remaining}} questions ce mois.",
     "quotaWarningUpgrade": "Passer à un plan supérieur",
+    "modelStandard": "Standard",
+    "modelStandardDesc": "Réponses illimitées",
+    "modelPremium": "Premium",
+    "modelPremiumDesc": "Réponses plus précises",
+    "modelPremiumCredits": "{{count}} crédits restants",
+    "modelPremiumExhausted": "Crédits épuisés",
+    "modelPremiumUpgrade": "Obtenir plus de crédits",
     "suggestedQuestions": [
       "Qu'est-ce que le Shabbat ?",
       "Expliquez le concept de Tikoun Olam",

@@ -10,6 +10,8 @@ interface ChatApiResponse {
   sourcesError?: string;
   conversationId?: string;
   quotaInfo?: { used: number; limit: number | null };
+  geminiCreditsRemaining?: number;
+  modelUsed?: "standard" | "premium";
 }
 
 interface UseChatOptions {
@@ -24,6 +26,9 @@ interface UseChatReturn {
   error: ChatError | null;
   conversationId: string | null;
   quotaInfo: { used: number; limit: number | null } | null;
+  geminiCredits: number;
+  selectedModel: "standard" | "premium";
+  setSelectedModel: (model: "standard" | "premium") => void;
   sendMessage: (content: string) => Promise<void>;
   editMessage: (messageId: string, newContent: string) => Promise<void>;
   stopGeneration: () => void;
@@ -45,6 +50,8 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     options.conversationId ?? null
   );
   const [quotaInfo, setQuotaInfo] = useState<{ used: number; limit: number | null } | null>(null);
+  const [geminiCredits, setGeminiCredits] = useState(5);
+  const [selectedModel, setSelectedModel] = useState<"standard" | "premium">("standard");
   const abortControllerRef = useRef<AbortController | null>(null);
   const exchangeCountRef = useRef(0);
   // Keep a ref to the last user message for regeneration
@@ -114,6 +121,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
           content: trimmed,
           conversationId,
           history: messages,
+          model: selectedModel,
         }),
         signal: abortController.signal,
       });
@@ -148,9 +156,12 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
         options.onConversationCreated?.(data.conversationId);
       }
 
-      // Update quota info
+      // Update quota info + gemini credits
       if (data.quotaInfo) {
         setQuotaInfo(data.quotaInfo);
+      }
+      if (data.geminiCreditsRemaining !== undefined) {
+        setGeminiCredits(data.geminiCreditsRemaining);
       }
 
       const sources: MessageSource[] = (data.sources ?? []).map((s) => ({
@@ -245,6 +256,9 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     error,
     conversationId,
     quotaInfo,
+    geminiCredits,
+    selectedModel,
+    setSelectedModel,
     sendMessage,
     editMessage,
     stopGeneration,

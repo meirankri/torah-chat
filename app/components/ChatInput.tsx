@@ -9,6 +9,7 @@ interface ChatInputProps {
   disabled: boolean;
   isLoading?: boolean;
   canRegenerate?: boolean;
+  leftSlot?: React.ReactNode;
 }
 
 export function ChatInput({
@@ -18,6 +19,7 @@ export function ChatInput({
   disabled,
   isLoading = false,
   canRegenerate = false,
+  leftSlot,
 }: ChatInputProps) {
   const { t } = useTranslation();
   const [value, setValue] = useState("");
@@ -74,6 +76,7 @@ export function ChatInput({
       )}
 
       <div className="mx-auto flex max-w-3xl items-end gap-3">
+        {leftSlot}
         <div className="relative flex-1">
           <textarea
             ref={textareaRef}

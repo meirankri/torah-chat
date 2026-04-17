@@ -14,6 +14,7 @@ interface D1UserRow {
   stripe_subscription_id: string | null;
   questions_this_month: number;
   questions_reset_at: string | null;
+  gemini_credits: number;
   trial_ends_at: string | null;
   failed_login_attempts: number;
   locked_until: string | null;
@@ -39,6 +40,7 @@ function rowToUser(row: D1UserRow): User {
     stripeSubscriptionId: row.stripe_subscription_id,
     questionsThisMonth: row.questions_this_month,
     questionsResetAt: row.questions_reset_at,
+    geminiCredits: row.gemini_credits ?? 5,
     trialEndsAt: row.trial_ends_at,
     failedLoginAttempts: row.failed_login_attempts,
     lockedUntil: row.locked_until,
@@ -181,6 +183,21 @@ export class D1UserRepository implements UserRepository {
       )
       .bind(new Date().toISOString(), id)
       .run();
+  }
+
+  async decrementGeminiCredits(id: string): Promise<number> {
+    const now = new Date().toISOString();
+    await this.db
+      .prepare(
+        "UPDATE users SET gemini_credits = MAX(0, gemini_credits - 1), updated_at = ? WHERE id = ?"
+      )
+      .bind(now, id)
+      .run();
+    const row = await this.db
+      .prepare("SELECT gemini_credits FROM users WHERE id = ?")
+      .bind(id)
+      .first<{ gemini_credits: number }>();
+    return row?.gemini_credits ?? 0;
   }
 
   async resetMonthlyQuestions(id: string): Promise<void> {

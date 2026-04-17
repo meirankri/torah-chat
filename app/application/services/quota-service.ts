@@ -38,6 +38,15 @@ export function getPlanLimit(plan: UserPlan, config: QuotaConfig = DEFAULT_QUOTA
 }
 
 /**
+ * Checks if user is eligible to use Gemini (Premium model).
+ * Standard/premium plans always have access. Free users have limited credits.
+ */
+export function isGeminiEligible(plan: UserPlan, geminiCredits: number): boolean {
+  if (plan === "standard" || plan === "premium") return true;
+  return geminiCredits > 0;
+}
+
+/**
  * Selects the AI model based on the user plan.
  */
 export function getModelForPlan(

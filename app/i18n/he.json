@@ -43,6 +43,13 @@
     "edit": "עריכה",
     "quotaWarning": "נותרו לך {{remaining}} שאלות החודש.",
     "quotaWarningUpgrade": "שדרג תוכנית",
+    "modelStandard": "רגיל",
+    "modelStandardDesc": "תשובות ללא הגבלה",
+    "modelPremium": "פרמיום",
+    "modelPremiumDesc": "תשובות מדויקות יותר",
+    "modelPremiumCredits": "נותרו {{count}} קרדיטים",
+    "modelPremiumExhausted": "הקרדיטים נגמרו",
+    "modelPremiumUpgrade": "קבל עוד קרדיטים",
     "suggestedQuestions": [
       "מהו השבת?",
       "הסבר את מושג תיקון עולם",

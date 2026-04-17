@@ -8,12 +8,14 @@ import { mapAgentSourcesToSources, mapCustomSourcesToSources } from "~/applicati
 import { requireAuth } from "~/lib/auth/middleware";
 import { D1ConversationRepository } from "~/infrastructure/repositories/d1-conversation-repository";
 import { D1UserRepository } from "~/infrastructure/repositories/d1-user-repository";
-import { checkAndIncrementQuota, getModelForPlan } from "~/application/services/quota-service";
+import { checkAndIncrementQuota, getModelForPlan, isGeminiEligible } from "~/application/services/quota-service";
 import { checkRateLimit } from "~/lib/rate-limit";
 import { retrieveCustomSources } from "~/application/services/rag-service";
 import type { CustomSource } from "~/application/services/rag-service";
 import { searchAgent, buildAgentSourceContext } from "~/application/services/search-agent";
 import type { AgentSource } from "~/application/services/search-agent";
+import { retrieveSefariaRagSources, buildSefariaRagContext } from "~/application/services/sefaria-rag-service";
+import { mapSefariaRagSourcesToSources } from "~/application/services/source-service";
 import { buildCustomSourceContext } from "~/lib/chat-keywords";
 
 const MAX_HISTORY_MESSAGES = 10;
@@ -21,6 +23,26 @@ const LLM_TIMEOUT_MS = 30_000;
 
 function chatErrorResponse(code: ChatErrorCode, message: string, status: number) {
   return Response.json({ code, message }, { status });
+}
+
+async function callWorkersAI(
+  env: { AI?: unknown },
+  model: string,
+  systemPrompt: string,
+  history: { role: "user" | "assistant"; content: string }[],
+  userMessage: string
+): Promise<string> {
+  if (!env.AI) throw new Error("Workers AI binding not available");
+  const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
+    { role: "system", content: systemPrompt },
+    ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+    { role: "user", content: userMessage },
+  ];
+  const aiResult = await (env.AI as {
+    run: (model: string, input: { messages: typeof messages }) => Promise<{ response?: string }>;
+  }).run(model, { messages });
+  if (!aiResult.response) throw new Error("Workers AI returned empty response");
+  return aiResult.response;
 }
 
 const SYSTEM_PROMPT_BASE = `Tu es un assistant spécialisé dans les textes juifs (Torah, Talmud, Midrash, Halakha, Hassidout, Kabbale, Moussar).
@@ -80,14 +102,15 @@ export async function action({ request, context }: Route.ActionArgs) {
     }
   }
 
-  let body: { content: string; history?: ChatMessage[]; conversationId?: string };
+  let body: { content: string; history?: ChatMessage[]; conversationId?: string; model?: "standard" | "premium" };
   try {
     body = await request.json();
   } catch {
     return chatErrorResponse("UNKNOWN", "Invalid request body", 400);
   }
 
-  const { content, history = [], conversationId } = body;
+  const { content, history = [], conversationId, model: requestedModel } = body;
+  const selectedModel = requestedModel === "premium" ? "premium" : "standard";
 
   if (!content || typeof content !== "string" || content.trim().length === 0) {
     return chatErrorResponse("UNKNOWN", "Message content is required", 400);
@@ -145,14 +168,33 @@ export async function action({ request, context }: Route.ActionArgs) {
     return chatErrorResponse("API_DOWN", "AI service not configured.", 503);
   }
 
-  // Determine model based on user plan (switch LLM by plan)
+  // Determine model based on user plan
   let userPlanForModel: import("~/domain/entities/user").UserPlan = "free_trial";
+  let geminiCreditsRemaining = 0;
   if (userId && env.DB) {
     const userForModel = await new D1UserRepository(env.DB).findById(userId);
-    if (userForModel) userPlanForModel = userForModel.plan;
+    if (userForModel) {
+      userPlanForModel = userForModel.plan;
+      geminiCreditsRemaining = userForModel.geminiCredits;
+    }
   }
-  // Determine Workers AI model (used as fallback if Gemini fails)
   const workersAiModel = getModelForPlan(userPlanForModel, env as Record<string, string>);
+
+  // Premium model eligibility check
+  const useGemini = selectedModel === "premium" && isGeminiEligible(userPlanForModel, geminiCreditsRemaining);
+  if (selectedModel === "premium" && !useGemini) {
+    return chatErrorResponse(
+      "QUOTA_EXCEEDED",
+      "Vos crédits Premium sont épuisés. Passez à un plan payant pour des réponses plus précises.",
+      429
+    );
+  }
+
+  // Decrement Gemini credits if using Premium
+  if (useGemini && userPlanForModel === "free_trial" && userId && env.DB) {
+    const userRepo = new D1UserRepository(env.DB);
+    geminiCreditsRemaining = await userRepo.decrementGeminiCredits(userId);
+  }
 
   const baseUrl = (env as Record<string, string>).SEFARIA_BASE_URL || "https://www.sefaria.org";
   const cacheTtl = parseInt(
@@ -186,129 +228,95 @@ export async function action({ request, context }: Route.ActionArgs) {
   const contextHistory =
     dbHistory.length > 0 ? dbHistory : history.map((m) => ({ role: m.role, content: m.content }));
 
-  // Search Agent: Gemini autonome qui cherche les meilleures sources via RAG + ES
-  let agentSources: AgentSource[] = [];
+  // Source retrieval + LLM response — dual pipeline based on selectedModel
   let sourcesError: string | undefined;
+  let sourceContext = "";
+  let sourcesForFrontend: ReturnType<typeof mapAgentSourcesToSources> = [];
+
   const vectorizeSefaria = (env as Record<string, unknown>).VECTORIZE_SEFARIA as
     | { query: (vector: number[], options: { topK: number; returnMetadata?: string; filter?: Record<string, unknown> }) => Promise<{ matches: Array<{ id: string; score: number; metadata?: Record<string, string> }> }> }
     | undefined;
 
-  if (geminiApiKey && env.DB) {
-    try {
-      const agentResult = await searchAgent(
-        {
-          geminiKey: geminiApiKey,
-          vectorize: vectorizeSefaria ?? null,
-          sefaria,
-          db: env.DB,
-        },
-        content.trim()
-      );
-      agentSources = agentResult.sources;
-      console.log(
-        `[Chat API] Search Agent: ${agentSources.length} sources in ${agentResult.iterations} iterations`,
-        agentResult.reasoning
-      );
-    } catch (err) {
-      console.error("[Chat API] Search Agent failed:", err);
-      sourcesError = "Erreur lors de la recherche des sources.";
+  if (useGemini) {
+    // ── PREMIUM pipeline: Search Agent (Gemini function calling) ──
+    let agentSources: AgentSource[] = [];
+    if (geminiApiKey && env.DB) {
+      try {
+        const agentResult = await searchAgent(
+          { geminiKey: geminiApiKey, vectorize: vectorizeSefaria ?? null, sefaria, db: env.DB },
+          content.trim()
+        );
+        agentSources = agentResult.sources;
+        console.log(`[Chat API] Premium Agent: ${agentSources.length} sources in ${agentResult.iterations} iterations`);
+      } catch (err) {
+        console.error("[Chat API] Premium Agent failed:", err);
+        sourcesError = "Erreur lors de la recherche des sources.";
+      }
+    }
+    sourceContext = buildAgentSourceContext(agentSources);
+    sourcesForFrontend = agentSources.length > 0 ? mapAgentSourcesToSources(agentSources, "pending") : [];
+  } else {
+    // ── STANDARD pipeline: RAG direct (Gemini Embedding + Vectorize, no agent) ──
+    if (geminiApiKey && vectorizeSefaria && env.DB) {
+      try {
+        const ragSources = await retrieveSefariaRagSources(geminiApiKey, vectorizeSefaria, env.DB, content.trim(), 5, 0.4);
+        console.log(`[Chat API] Standard RAG: ${ragSources.length} sources`);
+        sourceContext = buildSefariaRagContext(ragSources);
+        sourcesForFrontend = ragSources.length > 0 ? mapSefariaRagSourcesToSources(ragSources, "pending") : [];
+      } catch (err) {
+        console.error("[Chat API] Standard RAG failed:", err);
+        sourcesError = "Erreur lors de la recherche des sources.";
+      }
     }
   }
 
-  if (agentSources.length === 0 && !sourcesError) {
-    sourcesError = "Aucune source trouvée pour cette question.";
-  }
-
-  // Build system prompt with agent sources + custom sources
+  // Custom sources (always)
   let customSources: CustomSource[] = [];
   if (env.AI && env.DB) {
     const vectorize = (env as Record<string, unknown>).VECTORIZE as Parameters<typeof retrieveCustomSources>[1];
     if (vectorize) {
       customSources = await retrieveCustomSources(
-        env.AI as Parameters<typeof retrieveCustomSources>[0],
-        vectorize,
-        env.DB,
-        content.trim(),
-        3
+        env.AI as Parameters<typeof retrieveCustomSources>[0], vectorize, env.DB, content.trim(), 3
       );
       if (customSources.length > 0) {
-        console.log(`[Chat API] RAG custom: ${customSources.length} custom sources retrieved`);
+        console.log(`[Chat API] RAG custom: ${customSources.length} custom sources`);
       }
     }
   }
 
-  const sourceContext = buildAgentSourceContext(agentSources) + buildCustomSourceContext(customSources);
-  const systemPrompt = SYSTEM_PROMPT_BASE + sourceContext;
+  if (sourcesForFrontend.length === 0 && customSources.length === 0 && !sourcesError) {
+    sourcesError = "Aucune source trouvée pour cette question.";
+  }
+
+  const fullSourceContext = sourceContext + buildCustomSourceContext(customSources);
+  const systemPrompt = SYSTEM_PROMPT_BASE + fullSourceContext;
 
   const recentHistory = contextHistory.slice(-MAX_HISTORY_MESSAGES);
   const geminiHistory = chatHistoryToGemini(recentHistory);
 
-  const agentSourcesForFrontend =
-    agentSources.length > 0 ? mapAgentSourcesToSources(agentSources, "pending") : [];
-  const customSourcesForFrontend =
-    customSources.length > 0 ? mapCustomSourcesToSources(customSources, "pending") : [];
-  const sourcesForFrontend = [
-    ...agentSourcesForFrontend,
-    ...customSourcesForFrontend,
-  ];
+  const customSourcesForFrontend = customSources.length > 0 ? mapCustomSourcesToSources(customSources, "pending") : [];
+  sourcesForFrontend = [...sourcesForFrontend, ...customSourcesForFrontend];
 
+  // ── LLM Response ──
   let responseText: string;
-  try {
-    responseText = await Promise.race([
-      gemini.chat(systemPrompt, geminiHistory, content.trim()),
-      new Promise<never>((_, reject) =>
-        setTimeout(
-          () => reject(new Error("LLM timeout")),
-          LLM_TIMEOUT_MS
-        )
-      ),
-    ]);
-  } catch (geminiError) {
-    if (geminiError instanceof Error && geminiError.message === "LLM timeout") {
-      console.warn("[Chat API] Gemini chat timed out after", LLM_TIMEOUT_MS, "ms");
-      return chatErrorResponse(
-        "API_DOWN",
-        "La réponse prend plus de temps que prévu. Veuillez réessayer.",
-        503
-      );
-    }
-    console.warn(
-      "[Chat API] Gemini failed, trying Workers AI fallback with model:",
-      workersAiModel,
-      geminiError instanceof Error ? geminiError.message : geminiError
-    );
-
-    if (!env.AI) {
-      console.error("[Chat API] Workers AI binding (env.AI) not available");
-      return chatErrorResponse("API_DOWN", "AI service is temporarily unavailable.", 503);
-    }
-
+  if (useGemini) {
+    // Premium: Gemini chat
     try {
-      const messages: { role: "system" | "user" | "assistant"; content: string }[] = [
-        { role: "system", content: systemPrompt },
-        ...recentHistory.map((m) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        })),
-        { role: "user", content: content.trim() },
-      ];
-
-      const aiResult = await (env.AI as {
-        run: (
-          model: string,
-          input: { messages: typeof messages }
-        ) => Promise<{ response?: string }>;
-      }).run(workersAiModel, { messages });
-
-      if (!aiResult.response) {
-        throw new Error("Workers AI returned empty response");
+      responseText = await Promise.race([
+        gemini.chat(systemPrompt, geminiHistory, content.trim()),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("LLM timeout")), LLM_TIMEOUT_MS)),
+      ]);
+    } catch (err) {
+      if (err instanceof Error && err.message === "LLM timeout") {
+        return chatErrorResponse("API_DOWN", "La réponse prend plus de temps que prévu. Veuillez réessayer.", 503);
       }
-      responseText = aiResult.response;
-      console.log("[Chat API] Workers AI fallback succeeded");
-    } catch (fallbackError) {
-      console.error("[Chat API] Workers AI fallback also failed:", fallbackError);
-      return chatErrorResponse("API_DOWN", "AI service is temporarily unavailable.", 503);
+      // Fallback to Workers AI
+      console.warn("[Chat API] Premium Gemini failed, falling back to Workers AI");
+      responseText = await callWorkersAI(env, workersAiModel, systemPrompt, recentHistory, content.trim());
     }
+  } else {
+    // Standard: Workers AI (Llama 70B) directly
+    responseText = await callWorkersAI(env, workersAiModel, systemPrompt, recentHistory, content.trim());
   }
 
   // Save messages to DB if we have a conversation
@@ -335,9 +343,13 @@ export async function action({ request, context }: Route.ActionArgs) {
     sourcesError?: string;
     conversationId?: string;
     quotaInfo?: { used: number; limit: number | null };
+    geminiCreditsRemaining: number;
+    modelUsed: "standard" | "premium";
   } = {
     response: responseText,
     sources: sourcesForFrontend,
+    geminiCreditsRemaining,
+    modelUsed: useGemini ? "premium" : "standard",
   };
 
   if (sourcesError) {
