@@ -1,5 +1,10 @@
 import type { Route } from "./+types/profile";
-import { useLoaderData, Link, useNavigate } from "react-router";
+import { useLoaderData, Link, useNavigate, useSearchParams } from "react-router";
+import { useTranslation } from "react-i18next";
+import { useState, useRef } from "react";
+import { requireAuth } from "~/lib/auth/middleware";
+import { D1UserRepository } from "~/infrastructure/repositories/d1-user-repository";
+import { getPlanLimit } from "~/application/services/quota-service";
 
 export function meta(_args: Route.MetaArgs) {
   return [
@@ -7,12 +12,6 @@ export function meta(_args: Route.MetaArgs) {
     { name: "description", content: "Gérez votre compte Torah Chat, votre abonnement et vos préférences." },
   ];
 }
-import { useTranslation } from "react-i18next";
-import { requireAuth } from "~/lib/auth/middleware";
-import { D1UserRepository } from "~/infrastructure/repositories/d1-user-repository";
-import { getPlanLimit } from "~/application/services/quota-service";
-import { useState, useRef } from "react";
-import { useSearchParams } from "react-router";
 
 interface ProfileData {
   id: string;
