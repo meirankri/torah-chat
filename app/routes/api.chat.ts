@@ -315,8 +315,22 @@ export async function action({ request, context }: Route.ActionArgs) {
       responseText = await callWorkersAI(env, workersAiModel, systemPrompt, recentHistory, content.trim());
     }
   } else {
-    // Standard: Workers AI (Llama 70B) directly
-    responseText = await callWorkersAI(env, workersAiModel, systemPrompt, recentHistory, content.trim());
+    // Standard: Workers AI (Llama 70B) directly, fallback to Gemini if unavailable (local dev)
+    try {
+      responseText = await Promise.race([
+        callWorkersAI(env, workersAiModel, systemPrompt, recentHistory, content.trim()),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("LLM timeout")), LLM_TIMEOUT_MS)),
+      ]);
+    } catch (err) {
+      if (err instanceof Error && err.message === "LLM timeout") {
+        return chatErrorResponse("API_DOWN", "La réponse prend plus de temps que prévu. Veuillez réessayer.", 503);
+      }
+      console.warn("[Chat API] Workers AI unavailable, falling back to Gemini (standard pipeline):", (err as Error).message);
+      responseText = await Promise.race([
+        gemini.chat(systemPrompt, geminiHistory, content.trim()),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("LLM timeout")), LLM_TIMEOUT_MS)),
+      ]);
+    }
   }
 
   // Save messages to DB if we have a conversation
