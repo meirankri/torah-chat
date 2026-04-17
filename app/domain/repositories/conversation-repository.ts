@@ -13,4 +13,5 @@ export interface ConversationRepository {
   addSources(sources: MessageSource[]): Promise<void>;
   getSourcesForMessage(messageId: string): Promise<MessageSource[]>;
   saveFeedback(messageId: string, userId: string, rating: 1 | -1): Promise<void>;
+  deleteMessagesFromId(conversationId: string, messageId: string): Promise<void>;
 }

@@ -1,6 +1,6 @@
 import type { Route } from "./+types/chat";
-import { useState, useCallback, useMemo } from "react";
-import { Link } from "react-router";
+import { useState, useCallback, useMemo, useEffect } from "react";
+import { Link, useNavigate, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useChat } from "~/lib/use-chat";
 import { useConversations } from "~/lib/use-conversations";
@@ -35,6 +35,8 @@ export function meta(_args: Route.MetaArgs) {
 
 export default function Chat() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { conversationId: urlConversationId } = useParams<{ conversationId?: string }>();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const {
     conversations,
@@ -49,18 +51,30 @@ export default function Chat() {
     generateTitle,
   } = useConversations();
 
+  // Sync URL param → active conversation on mount / URL change
+  useEffect(() => {
+    if (urlConversationId && urlConversationId !== activeConversationId) {
+      setActiveConversationId(urlConversationId);
+    } else if (!urlConversationId && activeConversationId) {
+      setActiveConversationId(null);
+    }
+    // Only run when URL param changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlConversationId]);
+
   const chatOptions = useMemo(
     () => ({
       conversationId: activeConversationId,
       onConversationCreated: (id: string) => {
         setActiveConversationId(id);
         loadConversations();
+        navigate(`/chat/${id}`, { replace: true });
       },
       onFirstExchange: (id: string) => {
         generateTitle(id);
       },
     }),
-    [activeConversationId, setActiveConversationId, loadConversations, generateTitle]
+    [activeConversationId, setActiveConversationId, loadConversations, generateTitle, navigate]
   );
 
   const {
@@ -69,6 +83,7 @@ export default function Chat() {
     error,
     quotaInfo,
     sendMessage,
+    editMessage,
     stopGeneration,
     regenerateLastResponse,
     clearError,
@@ -106,9 +121,10 @@ export default function Chat() {
   const handleNewConversation = useCallback(() => {
     setActiveConversationId(null);
     clearMessages();
-  }, [setActiveConversationId, clearMessages]);
+    navigate("/chat");
+  }, [setActiveConversationId, clearMessages, navigate]);
 
-  const handleSelectConversation = useCallback(
+  const loadConversationMessages = useCallback(
     async (id: string) => {
       const data = await selectConversation(id);
       if (data) {
@@ -124,9 +140,27 @@ export default function Chat() {
         }));
         setMessages(chatMessages);
       }
+      return data;
     },
     [selectConversation, setMessages]
   );
+
+  const handleSelectConversation = useCallback(
+    async (id: string) => {
+      await loadConversationMessages(id);
+      navigate(`/chat/${id}`);
+    },
+    [loadConversationMessages, navigate]
+  );
+
+  // Load conversation from URL on mount
+  useEffect(() => {
+    if (urlConversationId && messages.length === 0) {
+      loadConversationMessages(urlConversationId);
+    }
+    // Only on mount / URL change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlConversationId]);
 
   // Suggested questions — translated
   const suggestedQuestions: string[] = t("chat.suggestedQuestions", { returnObjects: true }) as string[];
@@ -140,9 +174,19 @@ export default function Chat() {
         activeConversationId={activeConversationId}
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
-        onDeleteConversation={deleteConversation}
+        onDeleteConversation={async (id: string) => {
+          await deleteConversation(id);
+          if (activeConversationId === id) {
+            navigate("/chat");
+          }
+        }}
         onRenameConversation={renameConversation}
-        onArchiveConversation={archiveConversation}
+        onArchiveConversation={async (id: string, archived: boolean) => {
+          await archiveConversation(id, archived);
+          if (archived && activeConversationId === id) {
+            navigate("/chat");
+          }
+        }}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
@@ -220,6 +264,7 @@ export default function Chat() {
                 key={msg.id}
                 message={msg}
                 onFeedback={msg.role === "assistant" ? handleFeedback : undefined}
+                onEdit={msg.role === "user" ? editMessage : undefined}
               />
             ))}
 

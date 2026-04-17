@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState, useCallback } from "react";
+import { Suspense, lazy, useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import type { ChatMessage as ChatMessageType } from "~/domain/entities/chat";
 import { SourceBlock } from "./SourceBlock";
@@ -12,6 +12,7 @@ const MarkdownRenderer = lazy(() =>
 interface ChatMessageProps {
   message: ChatMessageType;
   onFeedback?: (messageId: string, rating: 1 | -1) => Promise<void>;
+  onEdit?: (messageId: string, newContent: string) => Promise<void>;
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -116,9 +117,43 @@ function FeedbackButtons({
   );
 }
 
-export function ChatMessage({ message, onFeedback }: ChatMessageProps) {
+export function ChatMessage({ message, onFeedback, onEdit }: ChatMessageProps) {
   const { t } = useTranslation();
   const isUser = message.role === "user";
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(message.content);
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (isEditing && editTextareaRef.current) {
+      editTextareaRef.current.focus();
+      editTextareaRef.current.setSelectionRange(
+        editTextareaRef.current.value.length,
+        editTextareaRef.current.value.length
+      );
+    }
+  }, [isEditing]);
+
+  const handleEditSubmit = useCallback(() => {
+    const trimmed = editContent.trim();
+    if (!trimmed || !onEdit) return;
+    setIsEditing(false);
+    onEdit(message.id, trimmed);
+  }, [editContent, onEdit, message.id]);
+
+  const handleEditCancel = useCallback(() => {
+    setIsEditing(false);
+    setEditContent(message.content);
+  }, [message.content]);
+
+  const handleEditKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleEditSubmit();
+    } else if (e.key === "Escape") {
+      handleEditCancel();
+    }
+  }, [handleEditSubmit, handleEditCancel]);
 
   return (
     <div
@@ -132,7 +167,33 @@ export function ChatMessage({ message, onFeedback }: ChatMessageProps) {
               : "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100"
           }`}
         >
-          {isUser ? (
+          {isUser && isEditing ? (
+            <div className="space-y-2">
+              <textarea
+                ref={editTextareaRef}
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                onKeyDown={handleEditKeyDown}
+                className="w-full resize-none rounded-lg bg-blue-700 p-2 text-white placeholder-blue-300 outline-none"
+                rows={3}
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={handleEditCancel}
+                  className="rounded px-3 py-1 text-xs text-blue-200 hover:text-white"
+                >
+                  {t("common.cancel")}
+                </button>
+                <button
+                  onClick={handleEditSubmit}
+                  disabled={!editContent.trim()}
+                  className="rounded bg-white px-3 py-1 text-xs font-medium text-blue-600 disabled:opacity-50"
+                >
+                  {t("common.save")}
+                </button>
+              </div>
+            </div>
+          ) : isUser ? (
             <p className="whitespace-pre-wrap">{message.content}</p>
           ) : (
             <Suspense fallback={<p className="whitespace-pre-wrap">{message.content}</p>}>
@@ -140,6 +201,25 @@ export function ChatMessage({ message, onFeedback }: ChatMessageProps) {
             </Suspense>
           )}
         </div>
+
+        {/* Edit button for user messages */}
+        {isUser && !isEditing && onEdit && (
+          <div className="flex justify-end px-1">
+            <button
+              onClick={() => {
+                setEditContent(message.content);
+                setIsEditing(true);
+              }}
+              className="rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors dark:hover:bg-gray-700 dark:hover:text-gray-300"
+              title={t("chat.edit")}
+              aria-label={t("chat.edit")}
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+              </svg>
+            </button>
+          </div>
+        )}
 
         {/* Action buttons for assistant messages with content */}
         {!isUser && message.content && (

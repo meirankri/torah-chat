@@ -40,6 +40,7 @@
     "copied": "Copié !",
     "feedbackHelpful": "Utile",
     "feedbackNotHelpful": "Pas utile",
+    "edit": "Modifier",
     "quotaWarning": "Il vous reste {{remaining}} questions ce mois.",
     "quotaWarningUpgrade": "Passer à un plan supérieur",
     "suggestedQuestions": [

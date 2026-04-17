@@ -245,6 +245,48 @@ export class D1ConversationRepository implements ConversationRepository {
     return results.map(rowToSource);
   }
 
+  async deleteMessagesFromId(conversationId: string, messageId: string): Promise<void> {
+    // Get the created_at of the target message to delete it and everything after
+    const targetMessage = await this.db
+      .prepare("SELECT created_at FROM messages WHERE id = ? AND conversation_id = ?")
+      .bind(messageId, conversationId)
+      .first<{ created_at: string }>();
+
+    if (!targetMessage) return;
+
+    // Get IDs of messages to delete (for cleaning up sources and feedback)
+    const { results: messagesToDelete } = await this.db
+      .prepare(
+        "SELECT id FROM messages WHERE conversation_id = ? AND created_at >= ?"
+      )
+      .bind(conversationId, targetMessage.created_at)
+      .all<{ id: string }>();
+
+    if (messagesToDelete.length === 0) return;
+
+    const messageIds = messagesToDelete.map((m) => m.id);
+
+    // Delete sources and feedback for these messages
+    for (const id of messageIds) {
+      await this.db
+        .prepare("DELETE FROM message_sources WHERE message_id = ?")
+        .bind(id)
+        .run();
+      await this.db
+        .prepare("DELETE FROM message_feedback WHERE message_id = ?")
+        .bind(id)
+        .run();
+    }
+
+    // Delete the messages themselves
+    await this.db
+      .prepare(
+        "DELETE FROM messages WHERE conversation_id = ? AND created_at >= ?"
+      )
+      .bind(conversationId, targetMessage.created_at)
+      .run();
+  }
+
   async saveFeedback(messageId: string, userId: string, rating: 1 | -1): Promise<void> {
     const id = crypto.randomUUID();
     const now = new Date().toISOString();

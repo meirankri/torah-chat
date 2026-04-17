@@ -3,6 +3,7 @@ import { type RouteConfig, index, route } from "@react-router/dev/routes";
 export default [
   index("routes/home.tsx"),
   route("chat", "routes/chat.tsx"),
+  route("chat/:conversationId", "routes/chat.$conversationId.tsx"),
   route("login", "routes/login.tsx"),
   route("signup", "routes/signup.tsx"),
   route("forgot-password", "routes/forgot-password.tsx"),
@@ -32,6 +33,7 @@ export default [
   route("api/cron/trial-reminders", "routes/api.cron.trial-reminders.ts"),
   route("api/cron/reset-quotas", "routes/api.cron.reset-quotas.ts"),
   route("api/feedback", "routes/api.feedback.ts"),
+  route("api/conversations/:id/edit-message", "routes/api.conversations.$id.edit-message.ts"),
   route("api/conversations/:id/share", "routes/api.conversations.$id.share.ts"),
   route("api/conversations/:id/export", "routes/api.conversations.$id.export.ts"),
   route("share/:token", "routes/share.$token.tsx"),

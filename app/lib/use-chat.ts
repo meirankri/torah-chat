@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { ChatMessage, ChatError } from "~/domain/entities/chat";
 import { MAX_INPUT_LENGTH } from "~/domain/entities/chat";
 import type { MessageSource } from "~/domain/entities/source";
@@ -25,6 +25,7 @@ interface UseChatReturn {
   conversationId: string | null;
   quotaInfo: { used: number; limit: number | null } | null;
   sendMessage: (content: string) => Promise<void>;
+  editMessage: (messageId: string, newContent: string) => Promise<void>;
   stopGeneration: () => void;
   regenerateLastResponse: () => Promise<void>;
   clearError: () => void;
@@ -48,6 +49,11 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   const exchangeCountRef = useRef(0);
   // Keep a ref to the last user message for regeneration
   const lastUserContentRef = useRef<string | null>(null);
+
+  // Sync conversationId from options when it changes externally
+  useEffect(() => {
+    setConversationId(options.conversationId ?? null);
+  }, [options.conversationId]);
 
   const clearError = useCallback(() => setError(null), []);
   const clearMessages = useCallback(() => {
@@ -206,6 +212,33 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     await sendMessage(lastUserContent);
   }, [isLoading, sendMessage]);
 
+  const editMessage = useCallback(async (messageId: string, newContent: string) => {
+    if (isLoading) return;
+
+    // Delete messages from this message onward on the server
+    if (conversationId) {
+      try {
+        await fetch(`/api/conversations/${conversationId}/edit-message`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messageId }),
+        });
+      } catch {
+        // Continue even if server call fails — we'll still update locally
+      }
+    }
+
+    // Remove the target message and everything after it locally
+    setMessages((prev) => {
+      const idx = prev.findIndex((m) => m.id === messageId);
+      if (idx === -1) return prev;
+      return prev.slice(0, idx);
+    });
+
+    // Send the edited content as a new message
+    await sendMessage(newContent);
+  }, [isLoading, conversationId, sendMessage]);
+
   return {
     messages,
     isLoading,
@@ -213,6 +246,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
     conversationId,
     quotaInfo,
     sendMessage,
+    editMessage,
     stopGeneration,
     regenerateLastResponse,
     clearError,
