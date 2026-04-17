@@ -3,14 +3,43 @@
 ## Stack technique
 - Backend: Cloudflare Workers (Wrangler)
 - DB: Cloudflare D1 (SQLite)
-- Vector: Cloudflare Vectorize
+- Vector: Cloudflare Vectorize (index `torah-chat-sefaria`, 1536 dim, cosine)
+- Embedding: Gemini Embedding 001 (via REST API, taskType RETRIEVAL_QUERY/DOCUMENT)
 - Cache: Cloudflare KV
-- LLM: Workers AI (Llama 8B/70B) + optionnel Claude/GPT pour Premium
-- Frontend: React Router v7 (Remix) + TypeScript + Tailwind CSS + Vite
-- Auth: Email + Google OAuth (JWT httpOnly cookies)
+- LLM Standard: Workers AI Llama 3.1-70B (gratuit, illimité)
+- LLM Premium: Google Gemini 2.5 Flash (via REST API, function calling pour l'agent)
+- Frontend: React Router v7 + TypeScript + Tailwind CSS + Vite
+- Auth: Email + Google + Apple OAuth (JWT httpOnly cookies)
 - Paiement: Stripe Checkout + Webhooks
 - i18n: FR/EN/HE avec support RTL
 - Emails: Brevo (transactionnels)
+
+## Architecture RAG / Sources
+
+### Pipeline Premium (Gemini — agent de recherche ReAct)
+1. L'utilisateur envoie une question avec `model: "premium"`
+2. `search-agent.ts` → Gemini 2.5 Flash avec function calling, max 3 itérations
+3. Outils dispo : `vectorize_search`, `exact_text_search`, `keyword_search`, `get_text`, `finish`
+4. Sources accumulées, dédupliquées, triées (exact > sémantique)
+5. Gemini génère la réponse finale avec les sources en contexte
+
+### Pipeline Standard (Llama 70B — RAG direct)
+1. L'utilisateur envoie une question avec `model: "standard"`
+2. `sefaria-rag-service.ts` → embed question via Gemini Embedding → query Vectorize top-5
+3. Llama 70B génère la réponse avec les sources RAG en contexte
+
+### Corpus Sefaria indexé (27 868 chunks)
+- Torah 5 livres (5 846 versets) + Rashi sur Torah (7 793 commentaires)
+- Mishna complète 63 traités (4 192 mishnayot)
+- Talmud Bavli : Berakhot, Shabbat, Pesachim (10 037 lignes)
+- Scripts d'ingestion : `scripts/fetch-sefaria-corpus.ts` + `scripts/ingest-sefaria.ts`
+- DB : table `sefaria_chunks` (D1), index Vectorize `torah-chat-sefaria`
+
+### Sélecteur de modèle
+- Free users : 5 crédits Premium à vie + Standard illimité
+- Standard/Premium plans : Premium illimité
+- Champ `gemini_credits` dans la table `users` (migration 0005)
+- Frontend : `ModelSelector.tsx` → dropdown Standard/Premium avec crédits restants
 
 ## Règles strictes
 - Ne JAMAIS utiliser `any` en TypeScript — utiliser des types stricts
@@ -68,6 +97,23 @@ Chaque feature implémentée DOIT être accompagnée de tests. Ne JAMAIS committ
 - `features-specification.md` — Spécifications détaillées de chaque feature
 - `cahier-des-charges-chatbot-torah.docx` — Cahier des charges technique
 - `features-tracker.md` — Suivi de l'avancement (mis à jour automatiquement)
+
+## Fichiers clés à connaître
+- `app/routes/api.chat.ts` — Endpoint chat principal, dual pipeline Standard/Premium
+- `app/application/services/search-agent.ts` — Agent ReAct Gemini (function calling)
+- `app/application/services/sefaria-rag-service.ts` — RAG direct Vectorize
+- `app/infrastructure/gemini/gemini-client.ts` — Client Gemini (chat + agent + embedding)
+- `app/infrastructure/sefaria/sefaria-client.ts` — Client API Sefaria (ES, getText, searchByHebrewPhrase)
+- `app/application/services/quota-service.ts` — Quotas, crédits Gemini, éligibilité
+- `app/components/ModelSelector.tsx` — Sélecteur Standard/Premium dans le chat
+- `scripts/fetch-sefaria-corpus.ts` — Fetch textes Sefaria → NDJSON
+- `scripts/ingest-sefaria.ts` — Embed Gemini + upsert Vectorize/D1 via REST
+
+## Limites connues
+- Vectorize ne fonctionne pas en local dev (binding remote only) → tester en déployé ou via REST API
+- React 19.0.0 pinné (19.1+ casse l'hydratation avec React Router 7)
+- Service Worker PWA peut cacher de vieux bundles JS → clear via DevTools si bug useContext
+- L'agent search (Premium) ne fonctionne qu'avec Gemini (function calling), pas Llama
 
 ## Workflow automatisé (quand lancé par le cron)
 1. Lire `features-tracker.md` pour identifier l'avancement actuel
