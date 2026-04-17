@@ -92,6 +92,22 @@ Chaque feature implémentée DOIT être accompagnée de tests. Ne JAMAIS committ
 4. Lancer `npm run test` — TOUS les tests doivent passer
 5. Lancer `npm run build` — le build doit réussir
 6. Seulement ALORS committer et cocher la feature dans le tracker
+7. **Mettre à jour la documentation** (voir section ci-dessous)
+
+## Documentation — OBLIGATOIRE après chaque feature
+
+**À chaque feature implémentée**, les fichiers suivants DOIVENT être mis à jour dans le même commit (ou un commit `docs:` juste après) :
+
+1. **`features-tracker.md`** — Cocher `[x]` la feature terminée. Si c'est une nouvelle phase, créer la section.
+2. **`CLAUDE.md`** — Mettre à jour si la feature change :
+   - L'architecture (nouveau service, nouvelle API, nouveau binding)
+   - La stack technique (nouveau modèle, nouveau provider)
+   - Les fichiers clés (nouveau fichier important ajouté)
+   - Les limites connues (nouveau bug connu, nouveau workaround)
+3. **`docs/architecture-rag.md`** — Mettre à jour si la feature touche le RAG, l'agent, le tiering, les embeddings, ou le corpus Sefaria.
+4. **`docs/known-issues.md`** — Ajouter tout nouveau bug/workaround découvert pendant l'implémentation.
+
+**Règle simple** : si un nouveau développeur (ou une nouvelle IA) ouvrait le projet demain, pourrait-il comprendre ce qui a été fait sans lire le code ? Si non, la doc manque.
 
 ## Documents de référence
 - `features-specification.md` — Spécifications détaillées de chaque feature
