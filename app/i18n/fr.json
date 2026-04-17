@@ -44,7 +44,7 @@
     "quotaWarning": "Il vous reste {{remaining}} questions ce mois.",
     "quotaWarningUpgrade": "Passer à un plan supérieur",
     "modelStandard": "Standard",
-    "modelStandardDesc": "Réponses illimitées",
+    "modelStandardDesc": "Réponses moins précises",
     "modelPremium": "Premium",
     "modelPremiumDesc": "Réponses plus précises",
     "modelPremiumCredits": "{{count}} crédits restants",
@@ -209,12 +209,7 @@
       "trial": {
         "name": "Essai gratuit",
         "description": "Découvrez Torah Chat pendant 7 jours",
-        "features": [
-          "7 jours d'essai",
-          "50 questions",
-          "Sources Sefaria",
-          "3 langues (FR/EN/HE)"
-        ]
+        "features": ["7 jours d'essai", "50 questions", "Sources Sefaria", "3 langues (FR/EN/HE)"]
       },
       "standard": {
         "name": "Standard",

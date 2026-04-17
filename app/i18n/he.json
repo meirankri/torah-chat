@@ -44,18 +44,13 @@
     "quotaWarning": "נותרו לך {{remaining}} שאלות החודש.",
     "quotaWarningUpgrade": "שדרג תוכנית",
     "modelStandard": "רגיל",
-    "modelStandardDesc": "תשובות ללא הגבלה",
+    "modelStandardDesc": "תשובות פחות מדויקות",
     "modelPremium": "פרמיום",
     "modelPremiumDesc": "תשובות מדויקות יותר",
     "modelPremiumCredits": "נותרו {{count}} קרדיטים",
     "modelPremiumExhausted": "הקרדיטים נגמרו",
     "modelPremiumUpgrade": "קבל עוד קרדיטים",
-    "suggestedQuestions": [
-      "מהו השבת?",
-      "הסבר את מושג תיקון עולם",
-      "מהן חוקי הכשרות?",
-      "מהי הקבלה?"
-    ]
+    "suggestedQuestions": ["מהו השבת?", "הסבר את מושג תיקון עולם", "מהן חוקי הכשרות?", "מהי הקבלה?"]
   },
   "sidebar": {
     "conversations": "שיחות",
@@ -209,12 +204,7 @@
       "trial": {
         "name": "ניסיון חינם",
         "description": "גלה את Torah Chat למשך 7 ימים",
-        "features": [
-          "7 ימי ניסיון",
-          "50 שאלות",
-          "מקורות Sefaria",
-          "3 שפות (FR/EN/HE)"
-        ]
+        "features": ["7 ימי ניסיון", "50 שאלות", "מקורות Sefaria", "3 שפות (FR/EN/HE)"]
       },
       "standard": {
         "name": "רגיל",
