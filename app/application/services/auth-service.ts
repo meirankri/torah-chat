@@ -19,7 +19,7 @@ import type { GoogleOAuthClient } from "~/infrastructure/oauth/google-oauth-clie
 import type { AppleOAuthClient } from "~/infrastructure/oauth/apple-oauth-client";
 
 const MAX_FAILED_ATTEMPTS = 5;
-const LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+const LOCK_DURATION_MS = 10 * 24 * 60 * 60 * 1000; // 10 jours
 const FREE_TRIAL_DAYS = 7;
 const REFRESH_TOKEN_DAYS = 7;
 const RESET_TOKEN_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
@@ -44,11 +44,7 @@ function createTokenExpiresAt(days: number): string {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 }
 
-async function generateTokens(
-  userId: string,
-  email: string,
-  deps: AuthDeps
-): Promise<AuthTokens> {
+async function generateTokens(userId: string, email: string, deps: AuthDeps): Promise<AuthTokens> {
   const accessToken = await createAccessToken(userId, email, deps.jwtSecret);
   const refreshTokenJwt = await createRefreshToken(userId, deps.jwtSecret);
 
@@ -131,9 +127,7 @@ export async function login(
     const update: Partial<User> = { failedLoginAttempts: attempts };
 
     if (attempts >= MAX_FAILED_ATTEMPTS) {
-      update.lockedUntil = new Date(
-        Date.now() + LOCK_DURATION_MS
-      ).toISOString();
+      update.lockedUntil = new Date(Date.now() + LOCK_DURATION_MS).toISOString();
     }
 
     await deps.userRepo.update(user.id, update);
@@ -152,10 +146,7 @@ export async function login(
   return { user, tokens };
 }
 
-export async function refreshTokens(
-  refreshTokenJwt: string,
-  deps: AuthDeps
-): Promise<AuthTokens> {
+export async function refreshTokens(refreshTokenJwt: string, deps: AuthDeps): Promise<AuthTokens> {
   const payload = await verifyRefreshToken(refreshTokenJwt, deps.jwtSecret);
   const tokenHash = await hashToken(refreshTokenJwt);
 
@@ -205,10 +196,7 @@ export async function forgotPassword(
   return { resetToken, userName: user.name ?? "" };
 }
 
-export async function resetPassword(
-  input: ResetPasswordInput,
-  deps: AuthDeps
-): Promise<void> {
+export async function resetPassword(input: ResetPasswordInput, deps: AuthDeps): Promise<void> {
   // We need to find the user by reset token - search by iterating is not ideal,
   // but for MVP with small user base it's acceptable.
   // A production solution would use a dedicated lookup table.
@@ -227,10 +215,7 @@ export async function resetPasswordWithEmail(
     throw new Error("Token de réinitialisation invalide");
   }
 
-  if (
-    !user.passwordResetToken ||
-    user.passwordResetToken !== token
-  ) {
+  if (!user.passwordResetToken || user.passwordResetToken !== token) {
     throw new Error("Token de réinitialisation invalide");
   }
 
@@ -263,9 +248,7 @@ export async function googleOAuth(
     deps.googleClientSecret
   );
 
-  const googleUser = await deps.googleClient.getUserInfo(
-    googleTokens.access_token
-  );
+  const googleUser = await deps.googleClient.getUserInfo(googleTokens.access_token);
 
   // Try to find existing user by Google provider
   let user = await deps.userRepo.findByProvider("google", googleUser.id);
@@ -315,17 +298,13 @@ export async function appleOAuth(
 
   if (idToken) {
     const fullName =
-      firstName && lastName
-        ? `${firstName} ${lastName}`
-        : firstName ?? lastName ?? undefined;
+      firstName && lastName ? `${firstName} ${lastName}` : (firstName ?? lastName ?? undefined);
     appleUser = deps.appleClient.getUserFromIdToken(idToken, fullName);
   } else {
     // Fallback: exchange code for token
     const appleTokens = await deps.appleClient.exchangeCodeForToken(code, redirectUri);
     const fullName =
-      firstName && lastName
-        ? `${firstName} ${lastName}`
-        : firstName ?? lastName ?? undefined;
+      firstName && lastName ? `${firstName} ${lastName}` : (firstName ?? lastName ?? undefined);
     appleUser = deps.appleClient.getUserFromIdToken(appleTokens.id_token, fullName);
   }
 
@@ -360,9 +339,6 @@ export async function appleOAuth(
   return { user, tokens };
 }
 
-export async function logout(
-  userId: string,
-  deps: AuthDeps
-): Promise<void> {
+export async function logout(userId: string, deps: AuthDeps): Promise<void> {
   await deps.refreshTokenRepo.deleteByUserId(userId);
 }

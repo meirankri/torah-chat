@@ -17,6 +17,7 @@ import type { AgentSource } from "~/application/services/search-agent";
 import { retrieveSefariaRagSources, buildSefariaRagContext } from "~/application/services/sefaria-rag-service";
 import { mapSefariaRagSourcesToSources } from "~/application/services/source-service";
 import { buildCustomSourceContext } from "~/lib/chat-keywords";
+import { createVectorizeRestClient, createD1RestClient } from "~/infrastructure/vectorize/vectorize-rest-client";
 
 const MAX_HISTORY_MESSAGES = 10;
 const LLM_TIMEOUT_MS = 30_000;
@@ -233,17 +234,49 @@ export async function action({ request, context }: Route.ActionArgs) {
   let sourceContext = "";
   let sourcesForFrontend: ReturnType<typeof mapAgentSourcesToSources> = [];
 
-  const vectorizeSefaria = (env as Record<string, unknown>).VECTORIZE_SEFARIA as
+  const vectorizeBinding = (env as Record<string, unknown>).VECTORIZE_SEFARIA as
     | { query: (vector: number[], options: { topK: number; returnMetadata?: string; filter?: Record<string, unknown> }) => Promise<{ matches: Array<{ id: string; score: number; metadata?: Record<string, string> }> }> }
     | undefined;
+
+  // Teste si le binding Vectorize fonctionne reellement (local dev = binding existe mais echoue)
+  // Si le binding echoue, on utilise le fallback REST API
+  let vectorizeSefaria = vectorizeBinding;
+  // D1 database — fallback REST si le binding local ne contient pas les chunks Sefaria
+  let sefariaDb: D1Database = env.DB;
+  const cfApiToken = (env as Record<string, string>).CF_API_TOKEN;
+  if (cfApiToken) {
+    const restFallback = createVectorizeRestClient(cfApiToken);
+    const d1Rest = createD1RestClient(cfApiToken);
+
+    if (vectorizeSefaria) {
+      // Wrapping : tenter le binding natif, fallback sur REST si erreur "remote"
+      const originalQuery = vectorizeSefaria.query.bind(vectorizeSefaria);
+      vectorizeSefaria = {
+        query: async (vector, options) => {
+          try {
+            return await originalQuery(vector, options);
+          } catch (err) {
+            console.log("[Chat API] Vectorize binding failed:", (err as Error).message, "— using REST fallback");
+            return restFallback.query(vector, options);
+          }
+        },
+      };
+    } else {
+      vectorizeSefaria = restFallback;
+    }
+
+    // Utiliser D1 REST pour les requetes sefaria_chunks (la DB locale est vide)
+    sefariaDb = d1Rest;
+    console.log("[Chat API] Using REST fallback for Vectorize + D1 (local dev)");
+  }
 
   if (useGemini) {
     // ── PREMIUM pipeline: Search Agent (Gemini function calling) ──
     let agentSources: AgentSource[] = [];
-    if (geminiApiKey && env.DB) {
+    if (geminiApiKey && sefariaDb) {
       try {
         const agentResult = await searchAgent(
-          { geminiKey: geminiApiKey, vectorize: vectorizeSefaria ?? null, sefaria, db: env.DB },
+          { geminiKey: geminiApiKey, vectorize: vectorizeSefaria ?? null, sefaria, db: sefariaDb },
           content.trim()
         );
         agentSources = agentResult.sources;
@@ -257,9 +290,9 @@ export async function action({ request, context }: Route.ActionArgs) {
     sourcesForFrontend = agentSources.length > 0 ? mapAgentSourcesToSources(agentSources, "pending") : [];
   } else {
     // ── STANDARD pipeline: RAG direct (Gemini Embedding + Vectorize, no agent) ──
-    if (geminiApiKey && vectorizeSefaria && env.DB) {
+    if (geminiApiKey && vectorizeSefaria && sefariaDb) {
       try {
-        const ragSources = await retrieveSefariaRagSources(geminiApiKey, vectorizeSefaria, env.DB, content.trim(), 5, 0.4);
+        const ragSources = await retrieveSefariaRagSources(geminiApiKey, vectorizeSefaria, sefariaDb, content.trim(), 5, 0.4);
         console.log(`[Chat API] Standard RAG: ${ragSources.length} sources`);
         sourceContext = buildSefariaRagContext(ragSources);
         sourcesForFrontend = ragSources.length > 0 ? mapSefariaRagSourcesToSources(ragSources, "pending") : [];
